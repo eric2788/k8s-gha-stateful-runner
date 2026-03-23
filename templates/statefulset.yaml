@@ -78,10 +78,38 @@ spec:
             - name: runner-work
               mountPath: /home/runner/_work
           resources: {{ $.Values.runner.resources | toYaml | nindent 12 }}
+        {{- if $.Values.dind.enable }}
+          env:
+            - name: DOCKER_HOST
+              value: tcp://localhost:2375
+        {{- end }}
+        {{- if $.Values.dind.enable }}
+        - name: dind
+          image: {{ $.Values.dind.image }}
+          securityContext:
+            privileged: true
+          args:
+            - --host=tcp://0.0.0.0:2375
+            - --host=unix:///var/run/docker.sock
+            - --tls=false
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+          volumeMounts:
+            - name: docker-storage
+              mountPath: /var/lib/docker
+            - name: runner-work
+              mountPath: /home/runner/_work
+          resources: {{ $.Values.dind.resources | toYaml | nindent 12 }}
+        {{- end }}
 
       volumes:
         - name: runner-work
           emptyDir: {}
+        {{- if $.Values.dind.enable }}
+        - name: docker-storage
+          emptyDir: {}
+        {{- end }}
 
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Delete

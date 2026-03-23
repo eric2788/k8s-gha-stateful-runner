@@ -1,6 +1,12 @@
 name: Test GitHub Actions Runner Helm Chart
 on:
   workflow_dispatch:
+    inputs:
+      test_dind:
+        description: 'Enable testing with Docker-in-Docker (DIND)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   test:
@@ -11,3 +17,56 @@ jobs:
           export CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
           export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
           curl --cacert $CACERT --header "Authorization: Bearer $TOKEN" https://kubernetes.default.svc/api/
+  test-dind:
+    runs-on: k3d
+    needs: [test]
+    if: ${{ !!inputs.test_dind }}
+    env:
+      DOCKER_HOST: tcp://localhost:2375
+      DOCKER_TLS_CERTDIR: ""
+    steps:
+      - name: wait for local Docker daemon
+        run: |
+          ready=false
+          for i in $(seq 1 30); do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker is ready"
+              ready=true
+              break
+            fi
+            echo "Waiting for local Docker daemon..."
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            echo "Docker daemon did not become ready in time"
+            exit 1
+          fi
+          docker info
+
+      - name: run normal docker image
+        run: |
+          docker run --rm hello-world
+
+  test-container:
+    runs-on: k3d
+    needs: [test]
+    if: ${{ !!inputs.test_dind }}
+    container:
+      image: alpine:3.20
+    steps:
+      - name: verify container shell
+        run: |
+          echo "Running in container job"
+          uname -a
+
+      - name: verify container filesystem
+        run: |
+          test -f /etc/alpine-release
+          cat /etc/alpine-release
+
+      - name: basic command smoke test
+        run: |
+          date
+          echo "test-container completed"
+
+
