@@ -1,7 +1,9 @@
-image: "ghcr.io/actions/runner"
+image: "ghcr.io/actions/actions-runner"
 version: 2.333.0
+fullnameOverride: ""
+includeNamespace: false
+namespaceOverride: ""
 runner:
-  fullnameOverride: ""
   name: "gha-sts-runner"
   count: 3
   secret: ""

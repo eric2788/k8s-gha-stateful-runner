@@ -7,16 +7,22 @@
 
 {{- define "actions-runner.fullname" -}}
 {{- $name := default .Chart.Name .Values.runner.name -}}
-{{- if not $.Values.runner.fullnameOverride -}}
+{{- if not $.Values.fullnameOverride -}}
 {{- printf "%s-%s" .Release.Name $name -}}
 {{- else -}}
-{{- $.Values.runner.fullnameOverride -}}
+{{- $.Values.fullnameOverride -}}
 {{- end -}}
 {{- end -}}
 
 {{- define "actions-runner.name" -}}
 {{- $name := default .Chart.Name .Values.runner.name -}}
 {{- printf "%s" $name -}}
+{{- end -}}
+
+{{- define "actions-runner.optionalNamespace" -}}
+{{- if $.Values.includeNamespace }}
+  namespace: {{ default $.Release.Namespace $.Values.namespaceOverride }}
+{{- end }}
 {{- end -}}
 
 {{- define "actions-runner.secretName" -}}

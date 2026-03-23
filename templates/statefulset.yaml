@@ -2,10 +2,11 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "actions-runner.fullname" $ }}
+  {{- include "actions-runner.optionalNamespace" $ }}
   labels:
     {{- include "actions-runner.labels" $ | nindent 4 }}
 spec:
-  replicas: {{ $.Values.runner.count }}            # 每個 replica = 一個獨立注冊的 runner
+  replicas: {{ $.Values.runner.count }}
   selector:
     matchLabels:
       {{- include "actions-runner.selectorLabels" $ | nindent 6 }}
@@ -14,13 +15,8 @@ spec:
       labels:
         {{- include "actions-runner.selectorLabels" $ | nindent 8 }}
     spec:
-      # 優雅退出：讓 runner 完成當前 job 才關閉
       terminationGracePeriodSeconds: 3600
       initContainers:
-        # initContainer 負責：
-        # 1. 檢查 .credentials 是否已存在（已注冊過）
-        # 2. 若不存在，用 RUNNER_TOKEN 執行 config.sh 注冊
-        # 3. 之後 main container 直接 run.sh 即可
         - name: runner-init
           image: {{ include "actions-runner.image" $ }}
           command: ["/bin/bash", "-c"]
@@ -28,28 +24,23 @@ spec:
             - |
               set -e
 
-              # credentials 已存在 → 已注冊過，跳過
               if [ -f "/creds/.credentials" ]; then
                 echo "Already configured, skipping."
                 exit 0
               fi
 
-              # 用 token 注冊，把 credentials 寫到獨立的 /creds volume
-              # --work 指向 emptyDir，不持久化
               /home/runner/config.sh \
                 --unattended \
                 --url "${RUNNER_URL}" \
                 --token "${RUNNER_TOKEN}" \
                 --name "${HOSTNAME}" \
-                --labels "${RUNNER_LABELS} "\
+                --labels "${RUNNER_LABELS}" \
                 --work /home/runner/_work \
-                --replace
+                --replace \
+                --disableupdate
 
-              # config.sh 把 credentials 寫在 /home/runner（image 的 WORKDIR）
-              # 把需要持久化的文件複製到獨立的 /creds volume
               cp /home/runner/.runner      /creds/.runner
               cp /home/runner/.credentials /creds/.credentials
-              # RSA key 也要持久化
               [ -f /home/runner/.credentials_rsaparams ] && \
                 cp /home/runner/.credentials_rsaparams /creds/.credentials_rsaparams
 
@@ -58,17 +49,17 @@ spec:
             - name: RUNNER_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "actions-runner.secretName" $ }}  # secret 名稱從 secret.yaml 讀取
+                  name: {{ include "actions-runner.secretName" $ }}
                   key: ui_token
             - name: RUNNER_URL
-              value: {{ .Values.runner.repoUrl }}  # repoUrl 從 values.yaml 讀取
+              value: {{ .Values.runner.repoUrl }}
             - name: RUNNER_LABELS
-              value: {{ $.Values.runner.labels | join "," }}  # labels 從 values.yaml 讀取
+              value: {{ $.Values.runner.labels | join "," | trim | quote }}
           volumeMounts:
-            - name: runner-creds   # 只掛憑證 volume
+            - name: runner-creds
               mountPath: /creds
             - name: runner-work
-              mountPath: /home/runner/_work   # work 用 emptyDir
+              mountPath: /home/runner/_work
 
       containers:
         - name: runner
@@ -76,23 +67,25 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              # 把持久化的 credentials 還原到 runner root（/home/runner）
               cp /creds/.credentials      /home/runner/.credentials
               cp /creds/.runner           /home/runner/.runner
               [ -f /creds/.credentials_rsaparams ] && \
                 cp /creds/.credentials_rsaparams /home/runner/.credentials_rsaparams
-              # 直接 run.sh，不需要任何 token
               /home/runner/run.sh
           volumeMounts:
             - name: runner-creds
-              mountPath: /creds           # 讀取憑證
+              mountPath: /creds
             - name: runner-work
-              mountPath: /home/runner/_work  # work 用 emptyDir，重啟即清空
+              mountPath: /home/runner/_work
           resources: {{ $.Values.runner.resources | toYaml | nindent 12 }}
 
       volumes:
         - name: runner-work
-          emptyDir: {}    # _work 不持久化
+          emptyDir: {}
+
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
+    whenScaled: Retain
 
   volumeClaimTemplates:
     - metadata:
@@ -101,4 +94,4 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 64Mi   # .credentials 幾個文件，幾 KB 而已
+            storage: 64Mi
