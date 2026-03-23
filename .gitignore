@@ -1,0 +1,5 @@
+/.idea/
+*.iml
+
+# test only
+values/values-test.yaml

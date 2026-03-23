@@ -1,0 +1,15 @@
+name: Test GitHub Actions Runner Helm Chart
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: k3d # Use k3d to create a local Kubernetes cluster for testing
+    container:
+      image: alpine/curl:latest # Use a lightweight image with curl for testing connectivity
+    steps:
+      - name: test connectivity of k3d cluster
+        run: |
+          export CACERT=$(cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt)
+          export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          curl --cacert $CACERT --header "Authorization: Bearer $TOKEN" https://kubernetes.default.svc/api/

@@ -1,0 +1,20 @@
+image: "ghcr.io/actions/runner"
+version: 2.333.0
+runner:
+  fullnameOverride: ""
+  name: "gha-sts-runner"
+  count: 3
+  secret: ""
+  token: "your-runner-token"
+  repoUrl: ""
+  labels:
+    - self-hosted
+    - linux
+    - gha-static
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
