@@ -147,6 +147,9 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
   --set dind.cacheSize=20Gi
 ```
 
+> [!WARNING]
+> Docker does not automatically garbage-collect unused image layers. With `cachePersistence` enabled, `/var/lib/docker` will grow over time as new images are pulled or built. To reclaim space, run `docker system prune -f` inside the DinD container periodically, or set `dind.cacheSize` generously (e.g. `50Gi`) based on your expected image footprint.
+
 > [!NOTE]
 > When `cachePersistence` is disabled (the default), the DinD storage falls back to `emptyDir` and the behaviour is identical to previous chart versions.
 
