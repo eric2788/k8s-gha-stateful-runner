@@ -149,7 +149,7 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 ```
 
 > [!WARNING]
-> Docker does not automatically garbage-collect unused image layers. With `cachePersistence` enabled, `/var/lib/docker` will grow over time as new images are pulled or built. To reclaim space, run `docker system prune -f` inside the DinD container periodically, or set `dind.cacheSize` generously (e.g. `50Gi`) based on your expected image footprint.
+> Docker does not automatically garbage-collect unused image layers. With `cachePersistence` enabled, `/var/lib/docker` will grow over time as new images are pulled or built. Enable `dind.pruneOnStop` (recommended) to automatically clean up dangling images and build cache before each pod restart, or set `dind.cacheSize` generously (e.g. `50Gi`) based on your expected image footprint.
 
 Enable `dind.pruneOnStop` to have the chart inject a `preStop` lifecycle hook that automatically runs `docker system prune -f` before each pod restart. Dangling images and accumulated build cache are removed, while tagged images are preserved for reuse — no manual intervention needed:
 
