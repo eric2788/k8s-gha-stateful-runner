@@ -69,6 +69,8 @@ runner:
     - self-hosted
     - linux
     - gha-static
+  # Additional environment variables for the runner container.
+  extraEnv: []
   # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
   storageClass: ""
   # Storage size for the credentials PVC

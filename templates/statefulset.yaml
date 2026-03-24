@@ -121,12 +121,15 @@ spec:
               [ -f /creds/.credentials_rsaparams ] && \
                 cp /creds/.credentials_rsaparams /home/runner/.credentials_rsaparams
               /home/runner/run.sh
+          {{- if or $.Values.runner.extraEnv $.Values.dind.enable }}
           env:
-            - name: RUNNER_MANUALLY_TRAP_SIG
-              value: "1"
+            {{- with $.Values.runner.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- if $.Values.dind.enable }}
             - name: DOCKER_HOST
               value: tcp://localhost:2375
+          {{- end }}
           {{- end }}
           {{- if $.Values.runner.preStop.enabled }}
           lifecycle:
