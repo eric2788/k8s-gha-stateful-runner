@@ -42,7 +42,9 @@ podAntiAffinity:
   # required: hard constraint (pods will not schedule on same node)
   type: preferred
 
-# Additional affinity rules (e.g. nodeAffinity). Merged with podAntiAffinity above.
+# Additional affinity rules (e.g. nodeAffinity, podAffinity). Appended to the
+# chart-generated podAntiAffinity above; do not include podAntiAffinity here
+# when podAntiAffinity.enabled is true.
 affinity: {}
 
 # Annotations to add to runner pods (e.g. for Prometheus monitoring)
