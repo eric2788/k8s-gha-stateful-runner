@@ -35,13 +35,14 @@ helm install my-runners . \
 | `runner.token` | Runner registration token (required when `runner.secret` is not set) | `""` |
 | `runner.secret` | Name of an existing Secret with key `ui_token` | `""` |
 | `runner.labels` | Runner labels for job routing | `[self-hosted, linux, gha-static]` |
+| `runner.extraEnv` | Additional environment variables for the runner container. Defaults to `RUNNER_MANUALLY_TRAP_SIG=1` | See `values.yaml` |
 | `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default) |
 | `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"` |
 | `runner.resources` | Resource requests/limits for runner container | See `values.yaml` |
 | `runner.initResources` | Resource requests/limits for init container | See `values.yaml` |
-| `serviceAccount.create` | Create a dedicated ServiceAccount | `true` |
-| `serviceAccount.name` | Override the ServiceAccount name | `""` |
-| `serviceAccount.automountServiceAccountToken` | Disable automatic API token mounting | `false` |
+| `serviceAccount.create` | Create a dedicated ServiceAccount resource. When `false`, the runner pod uses `serviceAccount.name` if set, otherwise the namespace `default` ServiceAccount | `true` |
+| `serviceAccount.name` | ServiceAccount name for the runner pod to use (existing or chart-created) | `""` |
+| `serviceAccount.automountServiceAccountToken` | Whether to auto-mount the Kubernetes API token on the runner pod | `false` |
 | `serviceAccount.annotations` | Annotations for the ServiceAccount (e.g. IRSA) | `{}` |
 | `podDisruptionBudget.enabled` | Create a PodDisruptionBudget | `true` |
 | `podDisruptionBudget.minAvailable` | Minimum available pods during disruptions | `1` |

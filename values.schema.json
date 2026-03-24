@@ -28,15 +28,15 @@
       "properties": {
         "create": {
           "type": "boolean",
-          "description": "Whether to create a ServiceAccount"
+          "description": "Whether the chart should create a ServiceAccount resource"
         },
         "name": {
           "type": "string",
-          "description": "Name of the ServiceAccount to use or create"
+          "description": "Name of the ServiceAccount for the runner pod to use or create"
         },
         "automountServiceAccountToken": {
           "type": "boolean",
-          "description": "Disable auto-mounting of the Kubernetes API token"
+          "description": "Whether to auto-mount the Kubernetes API token on the runner pod"
         },
         "annotations": {
           "type": "object",
@@ -144,6 +144,37 @@
             "type": "string"
           },
           "description": "Runner labels used for job routing"
+        },
+        "extraEnv": {
+          "type": "array",
+          "description": "Additional environment variables for the runner container",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Environment variable name"
+              },
+              "value": {
+                "type": "string",
+                "description": "Literal environment variable value"
+              },
+              "valueFrom": {
+                "type": "object",
+                "description": "Environment variable source reference"
+              }
+            },
+            "oneOf": [
+              {
+                "required": ["value"]
+              },
+              {
+                "required": ["valueFrom"]
+              }
+            ]
+          }
         },
         "storageClass": {
           "type": "string",

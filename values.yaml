@@ -6,11 +6,12 @@ includeNamespace: false
 namespaceOverride: ""
 
 serviceAccount:
-  # Specifies whether a service account should be created
+  # Specifies whether the chart should create a ServiceAccount resource.
+  # When false, the pod still uses serviceAccount.name if provided, otherwise it falls back to the namespace default ServiceAccount.
   create: true
-  # Name of the service account to use. If empty and create is true, the fullname is used.
+  # Name of the ServiceAccount for the runner pod to use. If empty and create is true, the chart fullname is used.
   name: ""
-  # Disable automatic mounting of the API credentials (recommended unless jobs need k8s access)
+  # Disable automatic mounting of the API credentials on the runner pod (recommended unless jobs need k8s access)
   automountServiceAccountToken: false
   # Annotations to add to the service account (e.g. for IAM role binding)
   annotations: {}

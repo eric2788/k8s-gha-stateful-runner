@@ -34,12 +34,10 @@
 {{- end -}}
 
 {{- define "actions-runner.serviceAccountName" -}}
-{{- if $.Values.serviceAccount.create -}}
 {{- if $.Values.serviceAccount.name -}}
 {{- $.Values.serviceAccount.name -}}
-{{- else -}}
+{{- else if $.Values.serviceAccount.create -}}
 {{- include "actions-runner.fullname" $ -}}
-{{- end -}}
 {{- else -}}
 {{- "default" -}}
 {{- end -}}
