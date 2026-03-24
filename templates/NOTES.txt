@@ -13,15 +13,33 @@ Watch all runner pods:
 
 == Re-registering Runners ==
 
-If a runner loses its GitHub registration (token expired or runner removed), delete
-its credentials PVC to force re-registration on the next pod start:
+If a runner loses its GitHub registration (runner removed from GitHub), re-register it:
 
-  # Replace <N> with the pod index (0, 1, 2, ...)
+  Step 1 — refresh the Secret with a NEW registration token FIRST
+  (GitHub tokens expire ~1 hour after generation):
+  kubectl create secret generic {{ include "actions-runner.secretName" $ }} \
+    --from-literal=ui_token=NEW_REGISTRATION_TOKEN \
+    --dry-run=client -o yaml | kubectl apply -f -{{ if $.Values.includeNamespace }} \
+    -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+
+  Step 2 — delete the credential PVC and pod (replace <N> with pod index 0, 1, 2, ...):
   kubectl delete pvc runner-creds-{{ include "actions-runner.fullname" $ }}-<N>{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
   kubectl delete pod {{ include "actions-runner.fullname" $ }}-<N>{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
 
-The init container will automatically re-run config.sh with the token from the Secret.
-Make sure the Secret contains a fresh registration token before deleting the PVC.
+The StatefulSet recreates the pod. Because the credential PVC was deleted, the init
+container runs config.sh with the new token and saves fresh credentials.
+
+Note: scaling the StatefulSet down and back up retains the credential PVCs so runners
+reconnect without re-registration. Only delete a PVC when you explicitly need to
+force re-registration for a specific runner.
+
+== Uninstalling ==
+
+  helm uninstall {{ .Release.Name }}{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+
+All credential PVCs are deleted automatically (whenDeleted: Delete).
+Runner entries in GitHub Settings → Actions → Runners will remain as offline.
+Remove them manually from the GitHub UI or via the API.
 
 == Docker-in-Docker ==
 {{- if $.Values.dind.enable }}

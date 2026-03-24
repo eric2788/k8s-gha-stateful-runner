@@ -97,7 +97,7 @@ kubectl delete pod <release-name>-gha-sts-runner-<N>
 
 The StatefulSet recreates the pod automatically. Because the PVC was deleted, the init container runs `config.sh` again with the new token and saves fresh credentials.
 
-> **Note**: The PVC retention policy is `whenScaled: Retain`, so Kubernetes does **not** delete the PVC when a pod is deleted or the StatefulSet is scaled down — you must delete it explicitly as shown above.
+> **Note**: `whenScaled: Retain` is intentional — scaling the StatefulSet down and back up preserves each runner's credential PVC so the runner reconnects to GitHub without re-registration. Only delete a PVC when you explicitly need to force re-registration for a specific runner.
 
 ## Uninstalling
 
