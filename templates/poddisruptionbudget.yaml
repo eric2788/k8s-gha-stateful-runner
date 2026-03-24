@@ -1,0 +1,21 @@
+{{- if $.Values.podDisruptionBudget.enabled }}
+{{- $minAvailable := $.Values.podDisruptionBudget.minAvailable }}
+{{- $runnerCount := $.Values.runner.count }}
+{{- if or (kindIs "int64" $minAvailable) (kindIs "float64" $minAvailable) (kindIs "int" $minAvailable) }}
+  {{- if ge (int $minAvailable) (int $runnerCount) }}
+    {{- fail (printf "podDisruptionBudget.minAvailable (%d) must be less than runner.count (%d)" (int $minAvailable) (int $runnerCount)) }}
+  {{- end }}
+{{- end }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "actions-runner.fullname" $ }}-pdb
+  {{- include "actions-runner.optionalNamespace" $ }}
+  labels:
+    {{- include "actions-runner.labels" $ | nindent 4 }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "actions-runner.selectorLabels" $ | nindent 6 }}
+{{- end }}

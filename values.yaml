@@ -1,18 +1,82 @@
 image: "ghcr.io/actions/actions-runner"
 version: 2.333.0
+imagePullPolicy: IfNotPresent
 fullnameOverride: ""
 includeNamespace: false
 namespaceOverride: ""
+
+serviceAccount:
+  # Specifies whether the chart should create a ServiceAccount resource.
+  # When false, the pod still uses serviceAccount.name if provided, otherwise it falls back to the namespace default ServiceAccount.
+  create: true
+  # Name of the ServiceAccount for the runner pod to use. If empty and create is true, the chart fullname is used.
+  name: ""
+  # Disable automatic mounting of the API credentials on the runner pod (recommended unless jobs need k8s access)
+  automountServiceAccountToken: false
+  # Annotations to add to the service account (e.g. for IAM role binding)
+  annotations: {}
+
+podDisruptionBudget:
+  enabled: true
+  # Minimum number of runners that must remain available during voluntary disruptions
+  minAvailable: 1
+
+# Pod-level security context applied to all containers (except dind which overrides)
+securityContext:
+  fsGroup: 1001
+
+# Container-level security context applied to the runner and init containers
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Pod anti-affinity to spread runners across nodes
+podAntiAffinity:
+  enabled: true
+  # preferred: soft constraint (works on single-node clusters)
+  # required: hard constraint (pods will not schedule on same node)
+  type: preferred
+
+# Additional affinity rules (e.g. nodeAffinity, podAffinity). Appended to the
+# chart-generated podAntiAffinity above; do not include podAntiAffinity here
+# when podAntiAffinity.enabled is true.
+affinity: {}
+
+# Annotations to add to runner pods (e.g. for Prometheus monitoring)
+podAnnotations: {}
+
 runner:
   name: "gha-sts-runner"
   count: 3
+  # Max time Kubernetes waits before force-killing the pod during termination.
+  terminationGracePeriodSeconds: 600
+  preStop:
+    # When enabled, ask Runner.Listener to stop and wait for active Runner.Worker with a hard timeout.
+    enabled: true
+    maxWaitSeconds: 540
+    pollIntervalSeconds: 5
+  # Name of an existing Secret containing the key 'ui_token'. If set, runner.token is ignored.
   secret: ""
-  token: "your-runner-token"
+  # Runner registration token obtained from GitHub Settings → Actions → Runners → New runner.
+  # Leave empty when providing runner.secret.
+  token: ""
+  # GitHub repository or organization URL (required), e.g. https://github.com/org/repo
   repoUrl: ""
   labels:
     - self-hosted
     - linux
     - gha-static
+  # Additional environment variables for the runner container.
+  extraEnv: []
+  # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
+  storageClass: ""
+  # Storage size for the credentials PVC
+  credStorageSize: "64Mi"
   resources:
     requests:
       cpu: "500m"
@@ -20,6 +84,38 @@ runner:
     limits:
       cpu: "1"
       memory: "1Gi"
+  # Resource limits for the init container (runs once per pod lifecycle)
+  initResources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+# Extra Kubernetes manifests to deploy alongside the chart.
+# Supports Helm templating via tpl. Useful for resources like NetworkPolicy,
+# ConfigMap, CronJob, etc. that are not managed by this chart.
+# Example:
+# extraManifests:
+#   - apiVersion: networking.k8s.io/v1
+#     kind: NetworkPolicy
+#     metadata:
+#       name: {{ include "actions-runner.fullname" . }}-egress
+#     spec:
+#       podSelector:
+#         matchLabels:
+#           {{- include "actions-runner.selectorLabels" . | nindent 10 }}
+#       policyTypes:
+#         - Egress
+#       egress:
+#         - ports:
+#             - port: 443
+#               protocol: TCP
+#             - port: 53
+#               protocol: UDP
+extraManifests: []
+
 dind:
   enable: false
   image: "docker:27-dind"
