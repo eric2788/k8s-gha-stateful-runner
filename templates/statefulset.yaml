@@ -95,11 +95,28 @@ spec:
               value: {{ $.Values.runner.repoUrl | quote }}
             - name: RUNNER_LABELS
               value: {{ $.Values.runner.labels | join "," | trim | quote }}
+            {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- end }}
           volumeMounts:
             - name: runner-creds
               mountPath: /creds
             - name: runner-work
               mountPath: /home/runner/_work
+              {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+              {{- if $.Values.workspace.subPathExpr }}
+              subPathExpr: {{ $.Values.workspace.subPathExpr }}
+              {{- else if $.Values.workspace.subPath }}
+              subPathExpr: $(POD_NAME)/{{ $.Values.workspace.subPath }}
+              {{- else }}
+              subPathExpr: $(POD_NAME)
+              {{- end }}
+              {{- else if and $.Values.workspace.enabled $.Values.workspace.subPath }}
+              subPath: {{ $.Values.workspace.subPath }}
+              {{- end }}
           {{- with $.Values.runner.initResources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -121,7 +138,7 @@ spec:
               [ -f /creds/.credentials_rsaparams ] && \
                 cp /creds/.credentials_rsaparams /home/runner/.credentials_rsaparams
               /home/runner/run.sh
-          {{- if or $.Values.runner.extraEnv $.Values.dind.enable }}
+          {{- if or $.Values.runner.extraEnv $.Values.dind.enable (and $.Values.workspace.enabled $.Values.workspace.existingClaim) }}
           env:
             {{- with $.Values.runner.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -129,6 +146,12 @@ spec:
           {{- if $.Values.dind.enable }}
             - name: DOCKER_HOST
               value: tcp://localhost:2375
+          {{- end }}
+          {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           {{- end }}
           {{- end }}
           {{- if $.Values.runner.preStop.enabled }}
@@ -175,6 +198,20 @@ spec:
               mountPath: /creds
             - name: runner-work
               mountPath: /home/runner/_work
+              {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+              {{- if $.Values.workspace.subPathExpr }}
+              subPathExpr: {{ $.Values.workspace.subPathExpr }}
+              {{- else if $.Values.workspace.subPath }}
+              subPathExpr: $(POD_NAME)/{{ $.Values.workspace.subPath }}
+              {{- else }}
+              subPathExpr: $(POD_NAME)
+              {{- end }}
+              {{- else if and $.Values.workspace.enabled $.Values.workspace.subPath }}
+              subPath: {{ $.Values.workspace.subPath }}
+              {{- end }}
+            {{- with $.Values.runner.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- with $.Values.runner.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -196,11 +233,28 @@ spec:
           env:
             - name: DOCKER_TLS_CERTDIR
               value: ""
+            {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- end }}
           volumeMounts:
             - name: docker-storage
               mountPath: /var/lib/docker
             - name: runner-work
               mountPath: /home/runner/_work
+              {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+              {{- if $.Values.workspace.subPathExpr }}
+              subPathExpr: {{ $.Values.workspace.subPathExpr }}
+              {{- else if $.Values.workspace.subPath }}
+              subPathExpr: $(POD_NAME)/{{ $.Values.workspace.subPath }}
+              {{- else }}
+              subPathExpr: $(POD_NAME)
+              {{- end }}
+              {{- else if and $.Values.workspace.enabled $.Values.workspace.subPath }}
+              subPath: {{ $.Values.workspace.subPath }}
+              {{- end }}
           {{- with $.Values.dind.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -208,11 +262,20 @@ spec:
         {{- end }}
 
       volumes:
+        {{- if not $.Values.workspace.enabled }}
         - name: runner-work
           emptyDir: {}
+        {{- else if $.Values.workspace.existingClaim }}
+        - name: runner-work
+          persistentVolumeClaim:
+            claimName: {{ $.Values.workspace.existingClaim }}
+        {{- end }}
         {{- if $.Values.dind.enable }}
         - name: docker-storage
           emptyDir: {}
+        {{- end }}
+        {{- with $.Values.runner.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 
   persistentVolumeClaimRetentionPolicy:
@@ -230,3 +293,24 @@ spec:
         resources:
           requests:
             storage: {{ $.Values.runner.credStorageSize }}
+    {{- if and $.Values.workspace.enabled (not $.Values.workspace.existingClaim) }}
+    - metadata:
+        name: runner-work
+        {{- with $.Values.workspace.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $.Values.workspace.labels }}
+        labels:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml $.Values.workspace.accessModes | nindent 10 }}
+        {{- if $.Values.workspace.storageClass }}
+        storageClassName: {{ $.Values.workspace.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $.Values.workspace.size }}
+    {{- end }}

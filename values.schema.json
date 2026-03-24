@@ -176,6 +176,20 @@
             ]
           }
         },
+        "extraVolumeMounts": {
+          "type": "array",
+          "description": "Additional volume mounts to attach to the runner container (e.g. for caching)",
+          "items": {
+            "type": "object"
+          }
+        },
+        "extraVolumes": {
+          "type": "array",
+          "description": "Additional volumes to add to the pod spec for use with extraVolumeMounts",
+          "items": {
+            "type": "object"
+          }
+        },
         "storageClass": {
           "type": "string",
           "description": "StorageClass for the credentials PVC. Defaults to the cluster default."
@@ -215,6 +229,52 @@
         "resources": {
           "type": "object",
           "description": "Resource requests and limits for the DinD container"
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "description": "Optional persistent workspace PVC for the runner's work directory",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the workspace PVC feature"
+        },
+        "storageClass": {
+          "type": "string",
+          "description": "StorageClass for the workspace PVC. Defaults to the cluster default."
+        },
+        "size": {
+          "type": "string",
+          "description": "Size of the workspace PVC (e.g. 10Gi)"
+        },
+        "accessModes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany", "ReadWriteOncePod"]
+          },
+          "description": "Access modes for the workspace PVC"
+        },
+        "subPath": {
+          "type": "string",
+          "description": "Optional sub-path within the volume to mount"
+        },
+        "subPathExpr": {
+          "type": "string",
+          "description": "Optional sub-path expression for existingClaim volume mounts. Can reference environment variables available to the pod (e.g. $(POD_NAME)). When empty and existingClaim is set, defaults to $(POD_NAME)."
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates)"
+        },
+        "labels": {
+          "type": "object",
+          "description": "Labels to add to the workspace PVC metadata (only used with volumeClaimTemplates)"
+        },
+        "existingClaim": {
+          "type": "string",
+          "description": "Name of an existing PVC to mount instead of creating a new VolumeClaimTemplate"
         }
       }
     }

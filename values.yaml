@@ -73,6 +73,21 @@ runner:
     - gha-static
   # Additional environment variables for the runner container.
   extraEnv: []
+  # Additional volume mounts to attach to the runner container (e.g. for caching).
+  # Each entry follows the standard Kubernetes volumeMount spec.
+  # Example:
+  # extraVolumeMounts:
+  #   - name: maven-cache
+  #     mountPath: /home/runner/.m2
+  extraVolumeMounts: []
+  # Additional volumes to add to the pod spec for use with extraVolumeMounts.
+  # Each entry follows the standard Kubernetes volume spec.
+  # Example:
+  # extraVolumes:
+  #   - name: maven-cache
+  #     persistentVolumeClaim:
+  #       claimName: maven-cache-pvc
+  extraVolumes: []
   # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
   storageClass: ""
   # Storage size for the credentials PVC
@@ -126,3 +141,34 @@ dind:
     limits:
       cpu: "1"
       memory: "2Gi"
+
+# Optional persistent workspace PVC for the runner's work directory.
+# When enabled without existingClaim, a VolumeClaimTemplate is added to the StatefulSet,
+# giving each pod its own dedicated workspace PVC.
+# When enabled with existingClaim, the named PVC is mounted directly (shared across all pods).
+# The existing credentials PVC (runner-creds) is unaffected by this setting.
+workspace:
+  enabled: false
+  # StorageClass for the workspace PVC. Defaults to the cluster default StorageClass.
+  storageClass: ""
+  # Size of the workspace PVC.
+  size: "10Gi"
+  # Access modes for the workspace PVC.
+  accessModes:
+    - ReadWriteOnce
+  # Optional sub-path within the volume to mount.
+  subPath: ""
+  # Optional sub-path expression for existingClaim volume mounts.
+  # When existingClaim is set, this expression is used as the subPathExpr and can reference
+  # environment variables available to the pod (for example, $(POD_NAME)).
+  # When empty, defaults to $(POD_NAME) (or $(POD_NAME)/<subPath> when subPath is also set)
+  # to provide per-pod workspace isolation.
+  subPathExpr: ""
+  # Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates).
+  annotations: {}
+  # Labels to add to the workspace PVC metadata (only used with volumeClaimTemplates).
+  labels: {}
+  # Name of an existing PVC to use instead of creating a new one per pod.
+  # When set, a volumeClaimTemplate is NOT created; the named PVC is mounted directly.
+  # Note: using ReadWriteOnce with multiple replicas will cause scheduling conflicts.
+  existingClaim: ""
