@@ -36,6 +36,7 @@ helm install my-runners . \
 | `runner.secret` | Name of an existing Secret with key `ui_token` | `""` |
 | `runner.labels` | Runner labels for job routing | `[self-hosted, linux, gha-static]` |
 | `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default) |
+| `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"` |
 | `runner.resources` | Resource requests/limits for runner container | See `values.yaml` |
 | `runner.initResources` | Resource requests/limits for init container | See `values.yaml` |
 | `serviceAccount.create` | Create a dedicated ServiceAccount | `true` |
@@ -49,6 +50,7 @@ helm install my-runners . \
 | `podAntiAffinity.enabled` | Spread runners across nodes | `true` |
 | `podAntiAffinity.type` | `preferred` (soft) or `required` (hard) | `preferred` |
 | `affinity` | Additional affinity rules (e.g. nodeAffinity) | `{}` |
+| `podAnnotations` | Annotations for runner pods (e.g. Prometheus) | `{}` |
 | `dind.enable` | Enable Docker-in-Docker sidecar | `false` |
 | `dind.image` | DinD container image | `docker:27-dind` |
 | `dind.resources` | Resource requests/limits for DinD container | See `values.yaml` |

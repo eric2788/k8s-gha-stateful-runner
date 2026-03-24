@@ -43,6 +43,9 @@ podAntiAffinity:
 # Additional affinity rules (e.g. nodeAffinity). Merged with podAntiAffinity above.
 affinity: {}
 
+# Annotations to add to runner pods (e.g. for Prometheus monitoring)
+podAnnotations: {}
+
 runner:
   name: "gha-sts-runner"
   count: 3
@@ -59,6 +62,8 @@ runner:
     - gha-static
   # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
   storageClass: ""
+  # Storage size for the credentials PVC
+  credStorageSize: "64Mi"
   resources:
     requests:
       cpu: "500m"

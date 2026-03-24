@@ -20,6 +20,9 @@ spec:
         {{- include "actions-runner.selectorLabels" $ | nindent 8 }}
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with $.Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "actions-runner.serviceAccountName" $ }}
       automountServiceAccountToken: {{ $.Values.serviceAccount.automountServiceAccountToken }}
@@ -203,4 +206,4 @@ spec:
         {{- end }}
         resources:
           requests:
-            storage: 64Mi
+            storage: {{ $.Values.runner.credStorageSize }}
