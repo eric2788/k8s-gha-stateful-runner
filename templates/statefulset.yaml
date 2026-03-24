@@ -114,6 +114,8 @@ spec:
               {{- else }}
               subPathExpr: $(POD_NAME)
               {{- end }}
+              {{- else if and $.Values.workspace.enabled $.Values.workspace.subPath }}
+              subPath: {{ $.Values.workspace.subPath }}
               {{- end }}
           {{- with $.Values.runner.initResources }}
           resources:
