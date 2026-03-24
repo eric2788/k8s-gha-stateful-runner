@@ -81,15 +81,33 @@ helm install my-runners . \
 
 ## Re-registering a Runner
 
-Runner credentials are cached in a PVC. If a runner's registration is lost (token expired, runner deleted from GitHub), re-register it by deleting the PVC for the affected pod:
+Runner credentials are cached in a PVC. If a runner's registration is lost (runner deleted from GitHub), re-register it by deleting the PVC for the affected pod:
 
 ```bash
-# Replace <N> with the pod index (0, 1, 2, ...)
+# 1. Update the Secret with a freshly generated registration token FIRST
+#    (tokens are only valid for ~1 hour from the moment they are generated)
+kubectl create secret generic <secret-name> \
+  --from-literal=ui_token=NEW_REGISTRATION_TOKEN \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# 2. Delete the credential PVC and the pod (replace <N> with the pod index 0, 1, 2, …)
 kubectl delete pvc runner-creds-<release-name>-gha-sts-runner-<N>
 kubectl delete pod <release-name>-gha-sts-runner-<N>
 ```
 
-Provide a fresh registration token in the Secret before deleting the PVC.
+The StatefulSet recreates the pod automatically. Because the PVC was deleted, the init container runs `config.sh` again with the new token and saves fresh credentials.
+
+> **Note**: The PVC retention policy is `whenScaled: Retain`, so Kubernetes does **not** delete the PVC when a pod is deleted or the StatefulSet is scaled down — you must delete it explicitly as shown above.
+
+## Uninstalling
+
+```bash
+helm uninstall <release-name>
+```
+
+Because the PVC retention policy is `whenDeleted: Delete`, uninstalling the chart deletes the StatefulSet **and all credential PVCs automatically** — no manual PVC cleanup is needed.
+
+However, the runner entries remain registered in **GitHub Settings → Actions → Runners** as offline runners. You must remove them manually from the GitHub UI (or via the API), or GitHub will auto-remove them after approximately 14 days of inactivity.
 
 ## Autoscaling
 
