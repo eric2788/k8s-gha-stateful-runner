@@ -116,12 +116,12 @@
             "maxWaitSeconds": {
               "type": "integer",
               "minimum": 1,
-              "description": "Maximum seconds preStop waits for Runner.Worker to exit"
+              "description": "Maximum seconds preStop waits for Runner.Listener to exit"
             },
             "pollIntervalSeconds": {
               "type": "integer",
               "minimum": 1,
-              "description": "Seconds between Runner.Worker checks during preStop"
+              "description": "Seconds between Runner.Listener checks during preStop"
             }
           }
         },
