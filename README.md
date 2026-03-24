@@ -12,6 +12,11 @@ Each runner pod keeps its registration credentials in a dedicated PersistentVolu
 
 ## Quick Start
 
+1. In GitHub, open your repository and go to **Settings -> Actions -> Runners**.
+2. Click **New self-hosted runner**.
+3. Copy the runner registration token shown in the setup page (this is the `ui_token`, valid for about 1 hour).
+4. Install the chart with your repo URL and token:
+
 ```bash
 helm install my-runners . \
   --set runner.repoUrl=https://github.com/your-org/your-repo \
@@ -22,39 +27,45 @@ helm install my-runners . \
 
 ## Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `image` | Runner container image | `ghcr.io/actions/actions-runner` |
-| `version` | Runner image tag | `2.333.0` |
-| `fullnameOverride` | Override the full resource name | `""` |
-| `includeNamespace` | Include namespace in resource metadata | `false` |
-| `namespaceOverride` | Override the namespace | `""` |
-| `runner.name` | Runner name prefix | `gha-sts-runner` |
-| `runner.count` | Number of runner replicas | `3` |
-| `runner.repoUrl` | **Required.** GitHub repo or org URL | `""` |
-| `runner.token` | Runner registration token (required when `runner.secret` is not set) | `""` |
-| `runner.secret` | Name of an existing Secret with key `ui_token` | `""` |
+| Parameter | Description | Default                            |
+|-----------|-------------|------------------------------------|
+| `image` | Runner container image | `ghcr.io/actions/actions-runner`   |
+| `version` | Runner image tag | `2.333.0`                          |
+| `imagePullPolicy` | Image pull policy for runner/init/DinD containers | `IfNotPresent`                     |
+| `fullnameOverride` | Override the full resource name | `""`                               |
+| `includeNamespace` | Include namespace in resource metadata | `false`                            |
+| `namespaceOverride` | Override the namespace | `""`                               |
+| `runner.name` | Runner name prefix | `gha-sts-runner`                   |
+| `runner.count` | Number of runner replicas | `3`                                |
+| `runner.terminationGracePeriodSeconds` | Pod termination grace period before force kill | `600`                              |
+| `runner.preStop.enabled` | Enable bounded preStop drain logic | `true`                             |
+| `runner.preStop.maxWaitSeconds` | Max wait for in-flight runner work during preStop | `540`                              |
+| `runner.preStop.pollIntervalSeconds` | Poll interval used by preStop wait loop | `5`                                |
+| `runner.repoUrl` | **Required.** GitHub repo or org URL | `""`                               |
+| `runner.token` | Runner registration token (required when `runner.secret` is not set) | `""`                               |
+| `runner.secret` | Name of an existing Secret with key `ui_token` | `""`                               |
 | `runner.labels` | Runner labels for job routing | `[self-hosted, linux, gha-static]` |
-| `runner.extraEnv` | Additional environment variables for the runner container. Defaults to `RUNNER_MANUALLY_TRAP_SIG=1` | See `values.yaml` |
-| `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default) |
-| `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"` |
-| `runner.resources` | Resource requests/limits for runner container | See `values.yaml` |
-| `runner.initResources` | Resource requests/limits for init container | See `values.yaml` |
-| `serviceAccount.create` | Create a dedicated ServiceAccount resource. When `false`, the runner pod uses `serviceAccount.name` if set, otherwise the namespace `default` ServiceAccount | `true` |
-| `serviceAccount.name` | ServiceAccount name for the runner pod to use (existing or chart-created) | `""` |
-| `serviceAccount.automountServiceAccountToken` | Whether to auto-mount the Kubernetes API token on the runner pod | `false` |
-| `serviceAccount.annotations` | Annotations for the ServiceAccount (e.g. IRSA) | `{}` |
-| `podDisruptionBudget.enabled` | Create a PodDisruptionBudget | `true` |
-| `podDisruptionBudget.minAvailable` | Minimum available pods during disruptions | `1` |
-| `securityContext` | Pod-level security context | `{fsGroup: 1001}` |
-| `containerSecurityContext` | Container-level security context | non-root, drop ALL capabilities |
-| `podAntiAffinity.enabled` | Spread runners across nodes | `true` |
-| `podAntiAffinity.type` | `preferred` (soft) or `required` (hard) | `preferred` |
-| `affinity` | Additional affinity rules (e.g. nodeAffinity) | `{}` |
-| `podAnnotations` | Annotations for runner pods (e.g. Prometheus) | `{}` |
-| `dind.enable` | Enable Docker-in-Docker sidecar | `false` |
-| `dind.image` | DinD container image | `docker:27-dind` |
-| `dind.resources` | Resource requests/limits for DinD container | See `values.yaml` |
+| `runner.extraEnv` | Additional environment variables for the runner container. | `[]`                               |
+| `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default)             |
+| `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"`                           |
+| `runner.resources` | Resource requests/limits for runner container | See `values.yaml`                  |
+| `runner.initResources` | Resource requests/limits for init container | See `values.yaml`                  |
+| `serviceAccount.create` | Create a dedicated ServiceAccount resource. When `false`, the runner pod uses `serviceAccount.name` if set, otherwise the namespace `default` ServiceAccount | `true`                             |
+| `serviceAccount.name` | ServiceAccount name for the runner pod to use (existing or chart-created) | `""`                               |
+| `serviceAccount.automountServiceAccountToken` | Whether to auto-mount the Kubernetes API token on the runner pod | `false`                            |
+| `serviceAccount.annotations` | Annotations for the ServiceAccount (e.g. IRSA) | `{}`                               |
+| `podDisruptionBudget.enabled` | Create a PodDisruptionBudget | `true`                             |
+| `podDisruptionBudget.minAvailable` | Minimum available pods during disruptions | `1`                                |
+| `securityContext` | Pod-level security context | `{fsGroup: 1001}`                  |
+| `containerSecurityContext` | Container-level security context | non-root, drop ALL capabilities    |
+| `podAntiAffinity.enabled` | Spread runners across nodes | `true`                             |
+| `podAntiAffinity.type` | `preferred` (soft) or `required` (hard) | `preferred`                        |
+| `affinity` | Additional affinity rules (e.g. nodeAffinity) | `{}`                               |
+| `podAnnotations` | Annotations for runner pods (e.g. Prometheus) | `{}`                               |
+| `extraManifests` | Extra templated Kubernetes manifests to deploy with this chart | `[]`                               |
+| `dind.enable` | Enable Docker-in-Docker sidecar | `false`                            |
+| `dind.image` | DinD container image | `docker:27-dind`                   |
+| `dind.resources` | Resource requests/limits for DinD container | See `values.yaml`                  |
 
 ## Using an Existing Secret
 
