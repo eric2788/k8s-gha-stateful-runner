@@ -238,6 +238,10 @@
           "type": "string",
           "description": "Size of the docker-storage PVC (e.g. 10Gi). Only used when cachePersistence is true."
         },
+        "pruneOnStop": {
+          "type": "boolean",
+          "description": "Run `docker system prune -f` in a preStop lifecycle hook. Removes dangling images and build cache before each pod restart to prevent unbounded PVC growth. Tagged images are preserved. Recommended when cachePersistence is true."
+        },
         "resources": {
           "type": "object",
           "description": "Resource requests and limits for the DinD container"

@@ -82,6 +82,7 @@ helm install my-runners . \
 | `dind.cachePersistence` | Persist the Docker layer cache (`/var/lib/docker`) across pod restarts via a per-pod PVC | `false`                            |
 | `dind.storageClass` | StorageClass for the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `""` (cluster default)             |
 | `dind.cacheSize` | Size of the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `"10Gi"`                           |
+| `dind.pruneOnStop` | Run `docker system prune -f` in a `preStop` hook to automatically remove dangling images and build cache before each pod restart. Recommended when `dind.cachePersistence` is `true`. | `false`                            |
 | `dind.resources` | Resource requests/limits for DinD container | See `values.yaml`                  |
 | `workspace.enabled` | Enable persistent workspace PVC for `/home/runner/_work` | `false`                            |
 | `workspace.storageClass` | StorageClass for workspace PVC | `""` (cluster default)             |
@@ -149,6 +150,18 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 > [!WARNING]
 > Docker does not automatically garbage-collect unused image layers. With `cachePersistence` enabled, `/var/lib/docker` will grow over time as new images are pulled or built. To reclaim space, run `docker system prune -f` inside the DinD container periodically, or set `dind.cacheSize` generously (e.g. `50Gi`) based on your expected image footprint.
+
+Enable `dind.pruneOnStop` to have the chart inject a `preStop` lifecycle hook that automatically runs `docker system prune -f` before each pod restart. Dangling images and accumulated build cache are removed, while tagged images are preserved for reuse — no manual intervention needed:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set dind.enable=true \
+  --set dind.cachePersistence=true \
+  --set dind.cacheSize=20Gi \
+  --set dind.pruneOnStop=true
+```
 
 > [!NOTE]
 > When `cachePersistence` is disabled (the default), the DinD storage falls back to `emptyDir` and the behaviour is identical to previous chart versions.

@@ -259,6 +259,12 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- if $.Values.dind.pruneOnStop }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "docker system prune -f || true"]
+          {{- end }}
         {{- end }}
 
       volumes:
