@@ -58,6 +58,8 @@ helm install my-runners . \
 | `runner.secret` | Name of an existing Secret with key `ui_token` | `""`                               |
 | `runner.labels` | Runner labels for job routing | `[self-hosted, linux, gha-static]` |
 | `runner.extraEnv` | Additional environment variables for the runner container. | `[]`                               |
+| `runner.extraVolumeMounts` | Additional volume mounts to attach to the runner container (e.g. for caching). | `[]`                               |
+| `runner.extraVolumes` | Additional volumes to add to the pod spec for use with `extraVolumeMounts`. | `[]`                               |
 | `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default)             |
 | `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"`                           |
 | `runner.resources` | Resource requests/limits for runner container | See `values.yaml`                  |
@@ -78,6 +80,15 @@ helm install my-runners . \
 | `dind.enable` | Enable Docker-in-Docker sidecar | `false`                            |
 | `dind.image` | DinD container image | `docker:27-dind`                   |
 | `dind.resources` | Resource requests/limits for DinD container | See `values.yaml`                  |
+| `workspace.enabled` | Enable persistent workspace PVC for `/home/runner/_work` | `false`                            |
+| `workspace.storageClass` | StorageClass for workspace PVC | `""` (cluster default)             |
+| `workspace.size` | Size of workspace PVC | `"10Gi"`                           |
+| `workspace.accessModes` | Access modes for workspace PVC | `[ReadWriteOnce]`                  |
+| `workspace.subPath` | Optional sub-path within the workspace volume to mount | `""`                               |
+| `workspace.subPathExpr` | Optional sub-path expression for `existingClaim` mounts (supports env vars such as `$(POD_NAME)`). Defaults to `$(POD_NAME)` when empty. | `""`                               |
+| `workspace.annotations` | Annotations for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
+| `workspace.labels` | Labels for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
+| `workspace.existingClaim` | Name of an existing PVC to mount instead of creating a per-pod VolumeClaimTemplate | `""`                               |
 
 ## Using an Existing Secret
 
@@ -105,6 +116,54 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 > [!WARNING]
 > DinD requires `privileged: true`. Ensure your cluster's PodSecurity policy or admission controller allows privileged containers.
+
+## Persistent Workspace
+
+By default, the runner's work directory (`/home/runner/_work`) is an `emptyDir` volume and is discarded when a pod restarts. Enable `workspace` to persist it across restarts.
+
+### Per-pod PVC (VolumeClaimTemplate)
+
+Each runner pod gets its own dedicated workspace PVC:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set workspace.enabled=true \
+  --set workspace.size=20Gi
+```
+
+### Shared Existing PVC
+
+Mount a single pre-existing PVC across all runner pods. The chart automatically isolates each pod's workspace under a `$(POD_NAME)` sub-path:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set workspace.enabled=true \
+  --set workspace.existingClaim=my-shared-workspace-pvc
+```
+
+> [!NOTE]
+> When using `existingClaim`, the PVC must support `ReadWriteMany` (e.g. NFS, CephFS) if you run more than one replica. Using `ReadWriteOnce` with multiple replicas will cause pod scheduling conflicts.
+
+You can override the sub-path expression via `workspace.subPathExpr` to use a custom path layout (any environment variable available to the pod is supported, e.g. `$(POD_NAME)`).
+
+## Extra Volume Mounts
+
+Attach additional volumes (e.g. a shared Maven cache PVC) to the runner container using `runner.extraVolumes` and `runner.extraVolumeMounts`:
+
+```yaml
+runner:
+  extraVolumeMounts:
+    - name: maven-cache
+      mountPath: /home/runner/.m2
+  extraVolumes:
+    - name: maven-cache
+      persistentVolumeClaim:
+        claimName: maven-cache-pvc
+```
 
 ## Re-registering a Runner
 
