@@ -58,6 +58,7 @@ spec:
       initContainers:
         - name: runner-init
           image: {{ include "actions-runner.image" $ }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
           command: ["/bin/bash", "-c"]
           args:
             - |
@@ -111,6 +112,7 @@ spec:
       containers:
         - name: runner
           image: {{ include "actions-runner.image" $ }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
           command: ["/bin/bash", "-c"]
           args:
             - |
@@ -164,6 +166,7 @@ spec:
         {{- if $.Values.dind.enable }}
         - name: dind
           image: {{ $.Values.dind.image }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
           securityContext:
             privileged: true
           args:
