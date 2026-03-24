@@ -178,6 +178,9 @@ spec:
               {{- if and $.Values.workspace.enabled $.Values.workspace.subPath }}
               subPath: {{ $.Values.workspace.subPath }}
               {{- end }}
+            {{- with $.Values.runner.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- with $.Values.runner.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -225,6 +228,9 @@ spec:
         {{- if $.Values.dind.enable }}
         - name: docker-storage
           emptyDir: {}
+        {{- end }}
+        {{- with $.Values.runner.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 
   persistentVolumeClaimRetentionPolicy:

@@ -176,6 +176,20 @@
             ]
           }
         },
+        "extraVolumeMounts": {
+          "type": "array",
+          "description": "Additional volume mounts to attach to the runner container (e.g. for caching)",
+          "items": {
+            "type": "object"
+          }
+        },
+        "extraVolumes": {
+          "type": "array",
+          "description": "Additional volumes to add to the pod spec for use with extraVolumeMounts",
+          "items": {
+            "type": "object"
+          }
+        },
         "storageClass": {
           "type": "string",
           "description": "StorageClass for the credentials PVC. Defaults to the cluster default."
