@@ -8,6 +8,17 @@ on:
         required: false
         default: false
 
+### In order to run the test, you should have this values in your helm chart's values.yaml:
+#serviceAccount:
+#  create: false <- use back default service account of k3d cluster
+#  automountServiceAccountToken: true  <- required for `test connectivity of k3d cluster`
+#runner:
+#  repoUrl: "https://github.com/eric2788/k8s-gha-stateful-runner" <- use your own repo URL here
+#  labels:
+#    - k3d <- use this label to fit the test workflow's needs
+#dind:
+#  enable: true <- if you want to test DIND functionality, make sure to enable this and have the necessary resources for it in your cluster
+
 jobs:
   test:
     runs-on: k3d # Use k3d to create a local Kubernetes cluster for testing
@@ -68,5 +79,3 @@ jobs:
         run: |
           date
           echo "test-container completed"
-
-
