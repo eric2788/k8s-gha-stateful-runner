@@ -1,0 +1,92 @@
+name: Release Helm Chart to GitHub Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Version mode"
+        type: choice
+        options:
+          - nightly
+          - release
+        default: nightly
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.14.0
+
+      - name: Resolve chart metadata and target version
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CHART_NAME=$(grep '^name:' Chart.yaml | awk '{print $2}')
+          BASE_VERSION=$(grep '^version:' Chart.yaml | awk '{print $2}')
+          MODE='${{ github.event.inputs.mode }}'
+
+          if [ -z "$CHART_NAME" ] || [ -z "$BASE_VERSION" ]; then
+            echo "Chart.yaml must contain both name and version." >&2
+            exit 1
+          fi
+
+          if [ "$MODE" = "release" ]; then
+            TARGET_VERSION="$BASE_VERSION"
+          else
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+            TARGET_VERSION="${BASE_VERSION}-nightly.${SHORT_SHA}"
+          fi
+
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+
+          echo "chart_name=$CHART_NAME" >> "$GITHUB_OUTPUT"
+          echo "target_version=$TARGET_VERSION" >> "$GITHUB_OUTPUT"
+          echo "owner_lc=$OWNER_LC" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Skip if chart version already exists
+        id: exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHART_NAME='${{ steps.meta.outputs.chart_name }}'
+          TARGET_VERSION='${{ steps.meta.outputs.target_version }}'
+          OWNER_LC='${{ steps.meta.outputs.owner_lc }}'
+
+          if helm pull "oci://ghcr.io/${OWNER_LC}/charts/${CHART_NAME}" --version "$TARGET_VERSION" --destination /tmp >/dev/null 2>&1; then
+            echo "::warning::${CHART_NAME}:${TARGET_VERSION} already exists in GHCR. Skipping publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package and push Helm chart
+        if: steps.exists.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHART_NAME='${{ steps.meta.outputs.chart_name }}'
+          TARGET_VERSION='${{ steps.meta.outputs.target_version }}'
+          OWNER_LC='${{ steps.meta.outputs.owner_lc }}'
+
+          echo "Packaging ${CHART_NAME} version ${TARGET_VERSION}"
+          helm package . --version "$TARGET_VERSION"
+          echo "Pushing to ghcr.io/${OWNER_LC}/charts"
+          helm push "${CHART_NAME}-${TARGET_VERSION}.tgz" "oci://ghcr.io/${OWNER_LC}/charts"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
