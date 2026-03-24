@@ -79,6 +79,9 @@ helm install my-runners . \
 | `extraManifests` | Extra templated Kubernetes manifests to deploy with this chart | `[]`                               |
 | `dind.enable` | Enable Docker-in-Docker sidecar | `false`                            |
 | `dind.image` | DinD container image | `docker:27-dind`                   |
+| `dind.cachePersistence` | Persist the Docker layer cache (`/var/lib/docker`) across pod restarts via a per-pod PVC | `false`                            |
+| `dind.storageClass` | StorageClass for the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `""` (cluster default)             |
+| `dind.cacheSize` | Size of the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `"10Gi"`                           |
 | `dind.resources` | Resource requests/limits for DinD container | See `values.yaml`                  |
 | `workspace.enabled` | Enable persistent workspace PVC for `/home/runner/_work` | `false`                            |
 | `workspace.storageClass` | StorageClass for workspace PVC | `""` (cluster default)             |
@@ -116,6 +119,36 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 > [!WARNING]
 > DinD requires `privileged: true`. Ensure your cluster's PodSecurity policy or admission controller allows privileged containers.
+
+### Persistent Docker Layer Cache
+
+By default, the DinD sidecar stores Docker image layers in an `emptyDir` volume that is discarded whenever the pod restarts. This means every restart triggers a full re-pull of all images, which is wasteful in CI/CD environments with frequent restarts (rolling updates, node drain, pod eviction, etc.).
+
+Enable `dind.cachePersistence` to instead back `/var/lib/docker` with a per-pod PersistentVolumeClaim. The PVC survives pod restarts, so cached image layers are reused across runs:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set dind.enable=true \
+  --set dind.cachePersistence=true \
+  --set dind.cacheSize=20Gi
+```
+
+Specify a StorageClass if your cluster has multiple storage backends:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set dind.enable=true \
+  --set dind.cachePersistence=true \
+  --set dind.storageClass=fast-ssd \
+  --set dind.cacheSize=20Gi
+```
+
+> [!NOTE]
+> When `cachePersistence` is disabled (the default), the DinD storage falls back to `emptyDir` and the behaviour is identical to previous chart versions.
 
 ## Persistent Workspace
 
