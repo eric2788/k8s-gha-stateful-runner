@@ -13,10 +13,7 @@ jobs:
     runs-on: k3d # Use k3d to create a local Kubernetes cluster for testing
     steps:
       - name: test connectivity of k3d cluster
-        run: |
-          export CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          export TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-          curl --cacert $CACERT --header "Authorization: Bearer $TOKEN" https://kubernetes.default.svc/api/
+        run: kubectl get nodes
   test-dind:
     runs-on: k3d
     needs: [test]
