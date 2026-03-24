@@ -15,15 +15,27 @@ Each runner pod keeps its registration credentials in a dedicated PersistentVolu
 1. In GitHub, open your repository and go to **Settings -> Actions -> Runners**.
 2. Click **New self-hosted runner**.
 3. Copy the runner registration token shown in the setup page (this is the `ui_token`, valid for about 1 hour).
-4. Install the chart with your repo URL and token:
+4. Install the chart from GHCR with your repo URL and token:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN
+```
+
+> [!NOTE]
+> - `runner.repoUrl` and either `runner.token` or `runner.secret` are required.
+> - Version is not pinned in these examples so new chart releases are picked up automatically.
+
+## Local Development Install
+
+For local chart development/testing from a cloned repo:
 
 ```bash
 helm install my-runners . \
   --set runner.repoUrl=https://github.com/your-org/your-repo \
   --set runner.token=YOUR_REGISTRATION_TOKEN
 ```
-
-> **Note**: `runner.repoUrl` and either `runner.token` or `runner.secret` are required.
 
 ## Configuration
 
@@ -75,7 +87,7 @@ Pre-create a secret and reference it to avoid passing the token on the command l
 kubectl create secret generic my-runner-token \
   --from-literal=ui_token=YOUR_REGISTRATION_TOKEN
 
-helm install my-runners . \
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
   --set runner.repoUrl=https://github.com/your-org/your-repo \
   --set runner.secret=my-runner-token
 ```
@@ -85,13 +97,14 @@ helm install my-runners . \
 Enable the DinD sidecar to run Docker commands inside jobs:
 
 ```bash
-helm install my-runners . \
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
   --set runner.repoUrl=https://github.com/your-org/your-repo \
   --set runner.token=YOUR_REGISTRATION_TOKEN \
   --set dind.enable=true
 ```
 
-> **Warning**: DinD requires `privileged: true`. Ensure your cluster's PodSecurity policy or admission controller allows privileged containers.
+> [!WARNING]
+> DinD requires `privileged: true`. Ensure your cluster's PodSecurity policy or admission controller allows privileged containers.
 
 ## Re-registering a Runner
 
@@ -111,7 +124,8 @@ kubectl delete pod <release-name>-gha-sts-runner-<N>
 
 The StatefulSet recreates the pod automatically. Because the PVC was deleted, the init container runs `config.sh` again with the new token and saves fresh credentials.
 
-> **Note**: `whenScaled: Retain` is intentional — scaling the StatefulSet down and back up preserves each runner's credential PVC so the runner reconnects to GitHub without re-registration. Only delete a PVC when you explicitly need to force re-registration for a specific runner.
+> [!NOTE]
+> `whenScaled: Retain` is intentional -- scaling the StatefulSet down and back up preserves each runner's credential PVC so the runner reconnects to GitHub without re-registration. Only delete a PVC when you explicitly need to force re-registration for a specific runner.
 
 ## Uninstalling
 
