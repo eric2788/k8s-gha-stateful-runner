@@ -138,6 +138,13 @@
         }
       }
     },
+    "extraManifests": {
+      "type": "array",
+      "description": "Extra Kubernetes manifests to deploy alongside the chart. Supports Helm templating via tpl.",
+      "items": {
+        "type": "object"
+      }
+    },
     "dind": {
       "type": "object",
       "properties": {
