@@ -85,7 +85,7 @@ helm install my-runners . \
 | `workspace.size` | Size of workspace PVC | `"10Gi"`                           |
 | `workspace.accessModes` | Access modes for workspace PVC | `[ReadWriteOnce]`                  |
 | `workspace.subPath` | Optional sub-path within the workspace volume to mount | `""`                               |
-| `workspace.subPathExpr` | Optional sub-path expression for `existingClaim` mounts (supports env vars such as `$(POD_NAME)`). Defaults to `$(POD_NAME)` when empty. | `""`                               |
+| `workspace.subPathExpr` | Optional sub-path expression for `existingClaim` mounts (supports env vars such as `$(POD_NAME)`). When empty and `workspace.subPath` is not set, defaults to `$(POD_NAME)`; when `workspace.subPath` is set and `subPathExpr` is empty, the effective path is `$(POD_NAME)/<workspace.subPath>`. | `""`                               |
 | `workspace.annotations` | Annotations for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
 | `workspace.labels` | Labels for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
 | `workspace.existingClaim` | Name of an existing PVC to mount instead of creating a per-pod VolumeClaimTemplate | `""`                               |
@@ -135,7 +135,11 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 ### Shared Existing PVC
 
-Mount a single pre-existing PVC across all runner pods. The chart automatically isolates each pod's workspace under a `$(POD_NAME)` sub-path:
+Mount a single pre-existing PVC across all runner pods. By default the chart isolates each pod's workspace using a sub-path expression:
+
+- When `workspace.subPath` is **not** set: each pod mounts under `$(POD_NAME)`.
+- When `workspace.subPath` **is** set: each pod mounts under `$(POD_NAME)/<subPath>`.
+- Set `workspace.subPathExpr` explicitly to override both defaults with a fully custom expression.
 
 ```bash
 helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
@@ -147,8 +151,6 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 > [!NOTE]
 > When using `existingClaim`, the PVC must support `ReadWriteMany` (e.g. NFS, CephFS) if you run more than one replica. Using `ReadWriteOnce` with multiple replicas will cause pod scheduling conflicts.
-
-You can override the sub-path expression via `workspace.subPathExpr` to use a custom path layout (any environment variable available to the pod is supported, e.g. `$(POD_NAME)`).
 
 ## Extra Volume Mounts
 
