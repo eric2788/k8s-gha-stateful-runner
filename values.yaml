@@ -55,7 +55,7 @@ runner:
   # Leave empty when providing runner.secret.
   token: ""
   # GitHub repository or organization URL (required), e.g. https://github.com/org/repo
-  repoUrl: "https://github.com/org/repo"
+  repoUrl: ""
   labels:
     - self-hosted
     - linux
