@@ -8,7 +8,7 @@ Each runner pod keeps its registration credentials in a dedicated PersistentVolu
 
 - Kubernetes 1.25+
 - Helm 3.x
-- A GitHub Actions runner registration token (obtained from **GitHub → Repository/Organization → Settings → Actions → Runners → New self-hosted runner**)
+- A GitHub Actions runner registration token (obtained from **GitHub → Repository → Settings → Actions → Runners → New self-hosted runner**)
 
 ## Quick Start
 
@@ -125,7 +125,9 @@ However, the runner entries remain registered in **GitHub Settings → Actions �
 
 ## Autoscaling
 
-For dynamic scaling based on the GitHub Actions job queue, consider using [KEDA](https://keda.sh/) with the [GitHub Runner scaler](https://keda.sh/docs/scalers/github-runner/).
+For dynamic, queue-based autoscaling, prefer GitHub's official [Actions Runner Controller (ARC)](https://github.com/actions/actions-runner-controller) with runner scale sets.
+
+This chart is designed for **stateful, persistent runners** with PVC-backed credentials and a fixed `runner.count`. If you need elastic scale-up/scale-down from workflow demand, use ARC instead of third-party scalers.
 
 ## Security Notes
 
