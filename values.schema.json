@@ -260,6 +260,10 @@
           "type": "string",
           "description": "Optional sub-path within the volume to mount"
         },
+        "subPathExpr": {
+          "type": "string",
+          "description": "Optional sub-path expression for existingClaim volume mounts. Supports Kubernetes downward API variables (e.g. $(POD_NAME)). When empty and existingClaim is set, defaults to $(POD_NAME)."
+        },
         "annotations": {
           "type": "object",
           "description": "Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates)"

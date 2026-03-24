@@ -107,7 +107,9 @@ spec:
             - name: runner-work
               mountPath: /home/runner/_work
               {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
-              {{- if $.Values.workspace.subPath }}
+              {{- if $.Values.workspace.subPathExpr }}
+              subPathExpr: {{ $.Values.workspace.subPathExpr }}
+              {{- else if $.Values.workspace.subPath }}
               subPathExpr: $(POD_NAME)/{{ $.Values.workspace.subPath }}
               {{- else }}
               subPathExpr: $(POD_NAME)
@@ -195,7 +197,9 @@ spec:
             - name: runner-work
               mountPath: /home/runner/_work
               {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
-              {{- if $.Values.workspace.subPath }}
+              {{- if $.Values.workspace.subPathExpr }}
+              subPathExpr: {{ $.Values.workspace.subPathExpr }}
+              {{- else if $.Values.workspace.subPath }}
               subPathExpr: $(POD_NAME)/{{ $.Values.workspace.subPath }}
               {{- else }}
               subPathExpr: $(POD_NAME)
@@ -239,7 +243,9 @@ spec:
             - name: runner-work
               mountPath: /home/runner/_work
               {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
-              {{- if $.Values.workspace.subPath }}
+              {{- if $.Values.workspace.subPathExpr }}
+              subPathExpr: {{ $.Values.workspace.subPathExpr }}
+              {{- else if $.Values.workspace.subPath }}
               subPathExpr: $(POD_NAME)/{{ $.Values.workspace.subPath }}
               {{- else }}
               subPathExpr: $(POD_NAME)

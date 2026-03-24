@@ -158,6 +158,12 @@ workspace:
     - ReadWriteOnce
   # Optional sub-path within the volume to mount.
   subPath: ""
+  # Optional sub-path expression for existingClaim volume mounts.
+  # When existingClaim is set, this expression is used as the subPathExpr and supports
+  # Kubernetes downward API variable substitution (e.g. $(POD_NAME), $(POD_NAMESPACE)).
+  # When empty, defaults to $(POD_NAME) (or $(POD_NAME)/<subPath> when subPath is also set)
+  # to provide per-pod workspace isolation.
+  subPathExpr: ""
   # Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates).
   annotations: {}
   # Labels to add to the workspace PVC metadata (only used with volumeClaimTemplates).
