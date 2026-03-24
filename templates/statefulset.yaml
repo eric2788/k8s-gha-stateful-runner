@@ -173,8 +173,16 @@ spec:
           volumeMounts:
             - name: runner-creds
               mountPath: /creds
+            {{- if $.Values.workspace.enabled }}
+            - name: runner-workspace
+              mountPath: {{ $.Values.workspace.mountPath }}
+              {{- if $.Values.workspace.subPath }}
+              subPath: {{ $.Values.workspace.subPath }}
+              {{- end }}
+            {{- else }}
             - name: runner-work
               mountPath: /home/runner/_work
+            {{- end }}
           {{- with $.Values.runner.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -199,8 +207,16 @@ spec:
           volumeMounts:
             - name: docker-storage
               mountPath: /var/lib/docker
+            {{- if $.Values.workspace.enabled }}
+            - name: runner-workspace
+              mountPath: {{ $.Values.workspace.mountPath }}
+              {{- if $.Values.workspace.subPath }}
+              subPath: {{ $.Values.workspace.subPath }}
+              {{- end }}
+            {{- else }}
             - name: runner-work
               mountPath: /home/runner/_work
+            {{- end }}
           {{- with $.Values.dind.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -213,6 +229,11 @@ spec:
         {{- if $.Values.dind.enable }}
         - name: docker-storage
           emptyDir: {}
+        {{- end }}
+        {{- if and $.Values.workspace.enabled $.Values.workspace.existingClaim }}
+        - name: runner-workspace
+          persistentVolumeClaim:
+            claimName: {{ $.Values.workspace.existingClaim }}
         {{- end }}
 
   persistentVolumeClaimRetentionPolicy:
@@ -230,3 +251,24 @@ spec:
         resources:
           requests:
             storage: {{ $.Values.runner.credStorageSize }}
+    {{- if and $.Values.workspace.enabled (not $.Values.workspace.existingClaim) }}
+    - metadata:
+        name: runner-workspace
+        {{- with $.Values.workspace.annotations }}
+        annotations:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with $.Values.workspace.labels }}
+        labels:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml $.Values.workspace.accessModes | nindent 10 }}
+        {{- if $.Values.workspace.storageClass }}
+        storageClassName: {{ $.Values.workspace.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $.Values.workspace.size }}
+    {{- end }}

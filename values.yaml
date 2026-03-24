@@ -126,3 +126,30 @@ dind:
     limits:
       cpu: "1"
       memory: "2Gi"
+
+# Optional persistent workspace PVC for the runner's work directory.
+# When enabled without existingClaim, a VolumeClaimTemplate is added to the StatefulSet,
+# giving each pod its own dedicated workspace PVC.
+# When enabled with existingClaim, the named PVC is mounted directly (shared across all pods).
+# The existing credentials PVC (runner-creds) is unaffected by this setting.
+workspace:
+  enabled: false
+  # StorageClass for the workspace PVC. Defaults to the cluster default StorageClass.
+  storageClass: ""
+  # Size of the workspace PVC.
+  size: "10Gi"
+  # Access modes for the workspace PVC.
+  accessModes:
+    - ReadWriteOnce
+  # Mount path for the workspace volume in the runner and dind containers.
+  mountPath: "/home/runner/_work"
+  # Optional sub-path within the volume to mount.
+  subPath: ""
+  # Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates).
+  annotations: {}
+  # Labels to add to the workspace PVC metadata (only used with volumeClaimTemplates).
+  labels: {}
+  # Name of an existing PVC to use instead of creating a new one per pod.
+  # When set, a volumeClaimTemplate is NOT created; the named PVC is mounted directly.
+  # Note: using ReadWriteOnce with multiple replicas will cause scheduling conflicts.
+  existingClaim: ""
