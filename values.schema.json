@@ -242,10 +242,6 @@
           },
           "description": "Access modes for the workspace PVC"
         },
-        "mountPath": {
-          "type": "string",
-          "description": "Mount path for the workspace volume in the runner and dind containers"
-        },
         "subPath": {
           "type": "string",
           "description": "Optional sub-path within the volume to mount"

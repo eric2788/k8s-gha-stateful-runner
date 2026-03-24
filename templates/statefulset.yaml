@@ -175,7 +175,7 @@ spec:
               mountPath: /creds
             {{- if $.Values.workspace.enabled }}
             - name: runner-workspace
-              mountPath: {{ $.Values.workspace.mountPath }}
+              mountPath: /home/runner/_work
               {{- if $.Values.workspace.subPath }}
               subPath: {{ $.Values.workspace.subPath }}
               {{- end }}
@@ -209,7 +209,7 @@ spec:
               mountPath: /var/lib/docker
             {{- if $.Values.workspace.enabled }}
             - name: runner-workspace
-              mountPath: {{ $.Values.workspace.mountPath }}
+              mountPath: /home/runner/_work
               {{- if $.Values.workspace.subPath }}
               subPath: {{ $.Values.workspace.subPath }}
               {{- end }}
@@ -256,11 +256,11 @@ spec:
         name: runner-workspace
         {{- with $.Values.workspace.annotations }}
         annotations:
-          {{- toYaml . | nindent 8 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         {{- with $.Values.workspace.labels }}
         labels:
-          {{- toYaml . | nindent 8 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
       spec:
         accessModes:

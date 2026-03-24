@@ -141,8 +141,6 @@ workspace:
   # Access modes for the workspace PVC.
   accessModes:
     - ReadWriteOnce
-  # Mount path for the workspace volume in the runner and dind containers.
-  mountPath: "/home/runner/_work"
   # Optional sub-path within the volume to mount.
   subPath: ""
   # Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates).
