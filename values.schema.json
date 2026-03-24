@@ -240,7 +240,7 @@
         },
         "pruneOnStop": {
           "type": "boolean",
-          "description": "Run `docker system prune -f` in a preStop lifecycle hook. Removes dangling images and build cache before each pod restart to prevent unbounded PVC growth. Tagged images are preserved. Recommended when cachePersistence is true."
+          "description": "Run `docker system prune -f` in a Kubernetes preStop lifecycle hook when the pod is terminating or restarting. This removes dangling images and build cache before each pod restart/termination to help limit PVC growth over time; it does not continuously prune during normal operation. Tagged images are preserved. Recommended when cachePersistence is true."
         },
         "resources": {
           "type": "object",

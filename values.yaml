@@ -144,9 +144,9 @@ dind:
   # Size of the docker-storage PVC. Only used when cachePersistence is true.
   cacheSize: "10Gi"
   # Run `docker system prune -f` in a preStop lifecycle hook on the DinD container.
-  # When enabled, dangling images and build cache are automatically removed before each pod
-  # restart, preventing unbounded PVC growth. Tagged images are preserved.
-  # Recommended when cachePersistence is true.
+  # When enabled, dangling images and build cache are automatically removed on pod
+  # termination/restart, helping limit PVC growth over time. Tagged images are preserved.
+  # Note: the cache can still grow between restarts for long-running pods. Recommended when cachePersistence is true.
   pruneOnStop: false
   resources:
     requests:
