@@ -100,6 +100,31 @@
           "minimum": 1,
           "description": "Number of runner replicas"
         },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Pod termination grace period in seconds"
+        },
+        "preStop": {
+          "type": "object",
+          "description": "Configures bounded graceful shutdown behavior during pod termination",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable lifecycle preStop drain logic"
+            },
+            "maxWaitSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum seconds preStop waits for Runner.Worker to exit"
+            },
+            "pollIntervalSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Seconds between Runner.Worker checks during preStop"
+            }
+          }
+        },
         "secret": {
           "type": "string",
           "description": "Name of an existing Secret containing key 'ui_token'. When set, runner.token is ignored."

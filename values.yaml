@@ -50,6 +50,13 @@ podAnnotations: {}
 runner:
   name: "gha-sts-runner"
   count: 3
+  # Max time Kubernetes waits before force-killing the pod during termination.
+  terminationGracePeriodSeconds: 600
+  preStop:
+    # When enabled, ask Runner.Listener to stop and wait for active Runner.Worker with a hard timeout.
+    enabled: true
+    maxWaitSeconds: 540
+    pollIntervalSeconds: 5
   # Name of an existing Secret containing the key 'ui_token'. If set, runner.token is ignored.
   secret: ""
   # Runner registration token obtained from GitHub Settings → Actions → Runners → New runner.

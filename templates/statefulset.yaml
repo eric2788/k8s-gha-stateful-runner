@@ -26,7 +26,7 @@ spec:
     spec:
       serviceAccountName: {{ include "actions-runner.serviceAccountName" $ }}
       automountServiceAccountToken: {{ $.Values.serviceAccount.automountServiceAccountToken }}
-      terminationGracePeriodSeconds: 3600
+      terminationGracePeriodSeconds: {{ $.Values.runner.terminationGracePeriodSeconds }}
       {{- with $.Values.securityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -121,18 +121,35 @@ spec:
               [ -f /creds/.credentials_rsaparams ] && \
                 cp /creds/.credentials_rsaparams /home/runner/.credentials_rsaparams
               /home/runner/run.sh
-          {{- if $.Values.dind.enable }}
           env:
+            - name: RUNNER_MANUALLY_TRAP_SIG
+              value: "1"
+          {{- if $.Values.dind.enable }}
             - name: DOCKER_HOST
               value: tcp://localhost:2375
           {{- end }}
+          {{- if $.Values.runner.preStop.enabled }}
           lifecycle:
             preStop:
               exec:
                 command:
                   - /bin/bash
                   - -c
-                  - while pgrep -f "Runner.Worker" > /dev/null; do sleep 5; done
+                  - |
+                    # Trigger graceful runner shutdown, then wait up to maxWaitSeconds for current job to finish.
+                    if pgrep -f "Runner.Listener" > /dev/null; then
+                     pkill -TERM -f "Runner.Listener" || true
+                    fi
+                    end=$((SECONDS + {{ $.Values.runner.preStop.maxWaitSeconds }}))
+                    while pgrep -f "Runner.Listener" > /dev/null; do
+                      if [ "$SECONDS" -ge "$end" ]; then
+                        echo "preStop timeout reached ({{ $.Values.runner.preStop.maxWaitSeconds }}s), continuing termination"
+                        break
+                      fi
+                      echo "Waiting for Runner.Listener to exit..."
+                      sleep {{ $.Values.runner.preStop.pollIntervalSeconds }}
+                    done
+          {{- end }}
           readinessProbe:
             exec:
               command:
