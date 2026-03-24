@@ -3,16 +3,62 @@ version: 2.333.0
 fullnameOverride: ""
 includeNamespace: false
 namespaceOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Name of the service account to use. If empty and create is true, the fullname is used.
+  name: ""
+  # Disable automatic mounting of the API credentials (recommended unless jobs need k8s access)
+  automountServiceAccountToken: false
+  # Annotations to add to the service account (e.g. for IAM role binding)
+  annotations: {}
+
+podDisruptionBudget:
+  enabled: true
+  # Minimum number of runners that must remain available during voluntary disruptions
+  minAvailable: 1
+
+# Pod-level security context applied to all containers (except dind which overrides)
+securityContext:
+  fsGroup: 1001
+
+# Container-level security context applied to the runner and init containers
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Pod anti-affinity to spread runners across nodes
+podAntiAffinity:
+  enabled: true
+  # preferred: soft constraint (works on single-node clusters)
+  # required: hard constraint (pods will not schedule on same node)
+  type: preferred
+
+# Additional affinity rules (e.g. nodeAffinity). Merged with podAntiAffinity above.
+affinity: {}
+
 runner:
   name: "gha-sts-runner"
   count: 3
+  # Name of an existing Secret containing the key 'ui_token'. If set, runner.token is ignored.
   secret: ""
-  token: "your-runner-token"
-  repoUrl: ""
+  # Runner registration token obtained from GitHub Settings → Actions → Runners → New runner.
+  # Leave empty when providing runner.secret.
+  token: ""
+  # GitHub repository or organization URL (required), e.g. https://github.com/org/repo
+  repoUrl: "https://github.com/org/repo"
   labels:
     - self-hosted
     - linux
     - gha-static
+  # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
+  storageClass: ""
   resources:
     requests:
       cpu: "500m"
@@ -20,6 +66,15 @@ runner:
     limits:
       cpu: "1"
       memory: "1Gi"
+  # Resource limits for the init container (runs once per pod lifecycle)
+  initResources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
 dind:
   enable: false
   image: "docker:27-dind"

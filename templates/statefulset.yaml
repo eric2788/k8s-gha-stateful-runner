@@ -10,12 +10,48 @@ spec:
   selector:
     matchLabels:
       {{- include "actions-runner.selectorLabels" $ | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
   template:
     metadata:
       labels:
         {{- include "actions-runner.selectorLabels" $ | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
+      serviceAccountName: {{ include "actions-runner.serviceAccountName" $ }}
+      automountServiceAccountToken: {{ $.Values.serviceAccount.automountServiceAccountToken }}
       terminationGracePeriodSeconds: 3600
+      {{- with $.Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or $.Values.podAntiAffinity.enabled $.Values.affinity }}
+      affinity:
+        {{- if $.Values.podAntiAffinity.enabled }}
+        podAntiAffinity:
+          {{- if eq $.Values.podAntiAffinity.type "required" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  {{- include "actions-runner.selectorLabels" $ | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "actions-runner.selectorLabels" $ | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+          {{- end }}
+        {{- end }}
+        {{- with $.Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
       initContainers:
         - name: runner-init
           image: {{ include "actions-runner.image" $ }}
@@ -52,7 +88,7 @@ spec:
                   name: {{ include "actions-runner.secretName" $ }}
                   key: ui_token
             - name: RUNNER_URL
-              value: {{ .Values.runner.repoUrl }}
+              value: {{ $.Values.runner.repoUrl | quote }}
             - name: RUNNER_LABELS
               value: {{ $.Values.runner.labels | join "," | trim | quote }}
           volumeMounts:
@@ -60,6 +96,14 @@ spec:
               mountPath: /creds
             - name: runner-work
               mountPath: /home/runner/_work
+          {{- with $.Values.runner.initResources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $.Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
 
       containers:
         - name: runner
@@ -72,17 +116,48 @@ spec:
               [ -f /creds/.credentials_rsaparams ] && \
                 cp /creds/.credentials_rsaparams /home/runner/.credentials_rsaparams
               /home/runner/run.sh
+          {{- if $.Values.dind.enable }}
+          env:
+            - name: DOCKER_HOST
+              value: tcp://localhost:2375
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/bash
+                  - -c
+                  - while pgrep -f "Runner.Worker" > /dev/null; do sleep 5; done
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - test -f /home/runner/.runner
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - pgrep -f "Runner.Listener"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
           volumeMounts:
             - name: runner-creds
               mountPath: /creds
             - name: runner-work
               mountPath: /home/runner/_work
-          resources: {{ $.Values.runner.resources | toYaml | nindent 12 }}
-        {{- if $.Values.dind.enable }}
-          env:
-            - name: DOCKER_HOST
-              value: tcp://localhost:2375
-        {{- end }}
+          {{- with $.Values.runner.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $.Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         {{- if $.Values.dind.enable }}
         - name: dind
           image: {{ $.Values.dind.image }}
@@ -100,7 +175,10 @@ spec:
               mountPath: /var/lib/docker
             - name: runner-work
               mountPath: /home/runner/_work
-          resources: {{ $.Values.dind.resources | toYaml | nindent 12 }}
+          {{- with $.Values.dind.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         {{- end }}
 
       volumes:
@@ -120,6 +198,9 @@ spec:
         name: runner-creds
       spec:
         accessModes: ["ReadWriteOnce"]
+        {{- if $.Values.runner.storageClass }}
+        storageClassName: {{ $.Values.runner.storageClass | quote }}
+        {{- end }}
         resources:
           requests:
             storage: 64Mi

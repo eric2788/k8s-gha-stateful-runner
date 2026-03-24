@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["runner"],
+  "properties": {
+    "image": {
+      "type": "string",
+      "description": "GitHub Actions runner container image"
+    },
+    "version": {
+      "type": "string",
+      "description": "Runner image version tag"
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "description": "Override the full resource name"
+    },
+    "includeNamespace": {
+      "type": "boolean",
+      "description": "Whether to include namespace in resource metadata"
+    },
+    "namespaceOverride": {
+      "type": "string",
+      "description": "Override the namespace. Uses the release namespace when empty."
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Whether to create a ServiceAccount"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ServiceAccount to use or create"
+        },
+        "automountServiceAccountToken": {
+          "type": "boolean",
+          "description": "Disable auto-mounting of the Kubernetes API token"
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Annotations to add to the ServiceAccount (e.g. for IAM role binding)"
+        }
+      }
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to create a PodDisruptionBudget"
+        },
+        "minAvailable": {
+          "type": ["integer", "string"],
+          "description": "Minimum number of available pods (integer or percentage)"
+        }
+      }
+    },
+    "securityContext": {
+      "type": "object",
+      "description": "Pod-level security context"
+    },
+    "containerSecurityContext": {
+      "type": "object",
+      "description": "Container-level security context applied to runner and init containers"
+    },
+    "podAntiAffinity": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Spread runner pods across nodes"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["preferred", "required"],
+          "description": "preferred: soft constraint; required: hard constraint (pods will not schedule on same node)"
+        }
+      }
+    },
+    "affinity": {
+      "type": "object",
+      "description": "Additional affinity rules merged with podAntiAffinity (e.g. nodeAffinity)"
+    },
+    "runner": {
+      "type": "object",
+      "required": ["repoUrl"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Runner name prefix"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of runner replicas"
+        },
+        "secret": {
+          "type": "string",
+          "description": "Name of an existing Secret containing key 'ui_token'. When set, runner.token is ignored."
+        },
+        "token": {
+          "type": "string",
+          "description": "GitHub Actions runner registration token. Required when runner.secret is not set."
+        },
+        "repoUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "GitHub repository or organization URL (e.g. https://github.com/org/repo)"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Runner labels used for job routing"
+        },
+        "storageClass": {
+          "type": "string",
+          "description": "StorageClass for the credentials PVC. Defaults to the cluster default."
+        },
+        "resources": {
+          "type": "object",
+          "description": "Resource requests and limits for the runner container"
+        },
+        "initResources": {
+          "type": "object",
+          "description": "Resource requests and limits for the init container"
+        }
+      }
+    },
+    "dind": {
+      "type": "object",
+      "properties": {
+        "enable": {
+          "type": "boolean",
+          "description": "Enable Docker-in-Docker sidecar container"
+        },
+        "image": {
+          "type": "string",
+          "description": "DinD container image"
+        },
+        "resources": {
+          "type": "object",
+          "description": "Resource requests and limits for the DinD container"
+        }
+      }
+    }
+  }
+}

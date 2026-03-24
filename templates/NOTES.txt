@@ -1,0 +1,38 @@
+Thank you for installing {{ .Chart.Name }} v{{ .Chart.Version }}.
+
+== Runner Status ==
+
+Check StatefulSet status:
+  kubectl get statefulset {{ include "actions-runner.fullname" $ }}{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+
+View runner logs:
+  kubectl logs statefulset/{{ include "actions-runner.fullname" $ }} -c runner{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+
+Watch all runner pods:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+
+== Re-registering Runners ==
+
+If a runner loses its GitHub registration (token expired or runner removed), delete
+its credentials PVC to force re-registration on the next pod start:
+
+  # Replace <N> with the pod index (0, 1, 2, ...)
+  kubectl delete pvc runner-creds-{{ include "actions-runner.fullname" $ }}-<N>{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+  kubectl delete pod {{ include "actions-runner.fullname" $ }}-<N>{{ if $.Values.includeNamespace }} -n {{ default .Release.Namespace $.Values.namespaceOverride }}{{ end }}
+
+The init container will automatically re-run config.sh with the token from the Secret.
+Make sure the Secret contains a fresh registration token before deleting the PVC.
+
+== Docker-in-Docker ==
+{{- if $.Values.dind.enable }}
+
+DinD is ENABLED. The Docker daemon is accessible at tcp://localhost:2375 within each pod.
+Note: DinD requires privileged containers. Ensure your cluster's admission policy allows this.
+{{- else }}
+
+DinD is disabled. To enable Docker support for your CI jobs, upgrade with:
+  --set dind.enable=true
+{{- end }}
+
+== Documentation ==
+https://github.com/eric2788/k8s-gha-stateful-runner
