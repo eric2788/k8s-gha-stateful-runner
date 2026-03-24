@@ -134,6 +134,15 @@ extraManifests: []
 dind:
   enable: false
   image: "docker:27-dind"
+  # Enable persistent storage for the Docker layer cache (/var/lib/docker).
+  # When false, an emptyDir is used and the cache is lost on pod restart.
+  # When true, a PersistentVolumeClaim is created per pod via volumeClaimTemplates.
+  cachePersistence: false
+  # StorageClass for the docker-storage PVC. Defaults to the cluster default StorageClass.
+  # Only used when cachePersistence is true.
+  storageClass: ""
+  # Size of the docker-storage PVC. Only used when cachePersistence is true.
+  cacheSize: "10Gi"
   resources:
     requests:
       cpu: "500m"

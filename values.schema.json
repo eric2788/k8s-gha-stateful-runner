@@ -226,6 +226,18 @@
           "type": "string",
           "description": "DinD container image"
         },
+        "cachePersistence": {
+          "type": "boolean",
+          "description": "Enable persistent storage for the Docker layer cache (/var/lib/docker). When true, a PVC is created per pod via volumeClaimTemplates."
+        },
+        "storageClass": {
+          "type": "string",
+          "description": "StorageClass for the docker-storage PVC. Defaults to the cluster default. Only used when cachePersistence is true."
+        },
+        "cacheSize": {
+          "type": "string",
+          "description": "Size of the docker-storage PVC (e.g. 10Gi). Only used when cachePersistence is true."
+        },
         "resources": {
           "type": "object",
           "description": "Resource requests and limits for the DinD container"

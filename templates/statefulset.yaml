@@ -270,7 +270,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ $.Values.workspace.existingClaim }}
         {{- end }}
-        {{- if $.Values.dind.enable }}
+        {{- if and $.Values.dind.enable (not $.Values.dind.cachePersistence) }}
         - name: docker-storage
           emptyDir: {}
         {{- end }}
@@ -313,4 +313,16 @@ spec:
         resources:
           requests:
             storage: {{ $.Values.workspace.size }}
+    {{- end }}
+    {{- if and $.Values.dind.enable $.Values.dind.cachePersistence }}
+    - metadata:
+        name: docker-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if $.Values.dind.storageClass }}
+        storageClassName: {{ $.Values.dind.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $.Values.dind.cacheSize | quote }}
     {{- end }}
