@@ -160,7 +160,7 @@ workspace:
   subPath: ""
   # Optional sub-path expression for existingClaim volume mounts.
   # When existingClaim is set, this expression is used as the subPathExpr and can reference
-  # environment variables available to the pod (e.g. $(POD_NAME)).
+  # environment variables available to the pod (for example, $(POD_NAME)).
   # When empty, defaults to $(POD_NAME) (or $(POD_NAME)/<subPath> when subPath is also set)
   # to provide per-pod workspace isolation.
   subPathExpr: ""
