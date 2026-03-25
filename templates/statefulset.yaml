@@ -229,16 +229,9 @@ spec:
           {{- end }}
         {{- end }}
 
-      {{- if or (not $.Values.workspace.enabled) $.Values.workspace.existingClaim (and $.Values.dind.enable (not $.Values.dind.cachePersistence)) $.Values.runner.extraVolumes }}
+      {{- with include "actions-runner.podVolumes" $ | trim }}
       volumes:
-        {{- include "actions-runner.workspaceVolumeSource" $ | nindent 8 }}
-        {{- if and $.Values.dind.enable (not $.Values.dind.cachePersistence) }}
-        - name: docker-storage
-          emptyDir: {}
-        {{- end }}
-        {{- with $.Values.runner.extraVolumes }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- . | nindent 8 }}
       {{- end }}
 
   persistentVolumeClaimRetentionPolicy:

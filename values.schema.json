@@ -87,6 +87,13 @@
       "type": "object",
       "description": "Annotations to add to runner pods (e.g. for Prometheus monitoring)"
     },
+    "extraVolumes": {
+      "type": "array",
+      "description": "Additional pod-level volumes shared by runner and DinD containers",
+      "items": {
+        "type": "object"
+      }
+    },
     "runner": {
       "type": "object",
       "required": ["repoUrl"],
@@ -179,13 +186,6 @@
         "extraVolumeMounts": {
           "type": "array",
           "description": "Additional volume mounts to attach to the runner container (e.g. for caching)",
-          "items": {
-            "type": "object"
-          }
-        },
-        "extraVolumes": {
-          "type": "array",
-          "description": "Additional volumes to add to the pod spec for use with extraVolumeMounts",
           "items": {
             "type": "object"
           }

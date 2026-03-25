@@ -50,6 +50,10 @@ affinity: {}
 # Annotations to add to runner pods (e.g. for Prometheus monitoring)
 podAnnotations: {}
 
+# Additional pod-level volumes for use with runner.extraVolumeMounts and dind.extraVolumeMounts.
+# This is shared across containers and is the preferred location.
+extraVolumes: []
+
 runner:
   name: "gha-sts-runner"
   count: 3
@@ -80,14 +84,6 @@ runner:
   #   - name: maven-cache
   #     mountPath: /home/runner/.m2
   extraVolumeMounts: []
-  # Additional volumes to add to the pod spec for use with extraVolumeMounts.
-  # Each entry follows the standard Kubernetes volume spec.
-  # Example:
-  # extraVolumes:
-  #   - name: maven-cache
-  #     persistentVolumeClaim:
-  #       claimName: maven-cache-pvc
-  extraVolumes: []
   # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
   storageClass: ""
   # Storage size for the credentials PVC
@@ -137,7 +133,7 @@ dind:
   # Additional environment variables for the DinD container.
   extraEnv: []
   # Additional volume mounts to attach to the DinD container.
-  # Mounts can reference built-in or runner.extraVolumes-defined pod volumes.
+  # Mounts can reference built-in or top-level extraVolumes-defined pod volumes.
   extraVolumeMounts: []
   # Enable persistent storage for the Docker layer cache (/var/lib/docker).
   # When false, an emptyDir is used and the cache is lost on pod restart.

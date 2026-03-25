@@ -59,7 +59,6 @@ helm install my-runners . \
 | `runner.labels` | Runner labels for job routing | `[self-hosted, linux, gha-static]` |
 | `runner.extraEnv` | Additional environment variables for the runner container. | `[]`                               |
 | `runner.extraVolumeMounts` | Additional volume mounts to attach to the runner container (e.g. for caching). | `[]`                               |
-| `runner.extraVolumes` | Additional volumes to add to the pod spec for use with `extraVolumeMounts`. | `[]`                               |
 | `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default)             |
 | `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"`                           |
 | `runner.resources` | Resource requests/limits for runner container | See `values.yaml`                  |
@@ -76,6 +75,7 @@ helm install my-runners . \
 | `podAntiAffinity.type` | `preferred` (soft) or `required` (hard) | `preferred`                        |
 | `affinity` | Additional affinity rules (e.g. nodeAffinity) | `{}`                               |
 | `podAnnotations` | Annotations for runner pods (e.g. Prometheus) | `{}`                               |
+| `extraVolumes` | Additional pod-level volumes shared by `runner.extraVolumeMounts` and `dind.extraVolumeMounts`. | `[]`                               |
 | `extraManifests` | Extra templated Kubernetes manifests to deploy with this chart | `[]`                               |
 | `dind.enable` | Enable Docker-in-Docker sidecar | `false`                            |
 | `dind.image` | DinD container image | `docker:27-dind`                   |
@@ -211,17 +211,18 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 ## Extra Volume Mounts
 
-Attach additional volumes (e.g. a shared Maven cache PVC) to the runner container using `runner.extraVolumes` and `runner.extraVolumeMounts`:
+Attach additional volumes (e.g. a shared Maven cache PVC) using top-level `extraVolumes`, then mount them from runner and/or DinD:
 
 ```yaml
+extraVolumes:
+  - name: maven-cache
+    persistentVolumeClaim:
+      claimName: maven-cache-pvc
+
 runner:
   extraVolumeMounts:
     - name: maven-cache
       mountPath: /home/runner/.m2
-  extraVolumes:
-    - name: maven-cache
-      persistentVolumeClaim:
-        claimName: maven-cache-pvc
 
 dind:
   extraVolumeMounts:

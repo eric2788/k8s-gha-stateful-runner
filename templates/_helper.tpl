@@ -80,6 +80,23 @@
 {{- end }}
 {{- end -}}
 
+{{- define "actions-runner.podVolumes" -}}
+{{- $chunks := list -}}
+{{- $workspaceVolume := include "actions-runner.workspaceVolumeSource" $ | trim -}}
+{{- if $workspaceVolume -}}
+{{- $chunks = append $chunks $workspaceVolume -}}
+{{- end -}}
+{{- if and $.Values.dind.enable (not $.Values.dind.cachePersistence) -}}
+{{- $chunks = append $chunks "- name: docker-storage\n  emptyDir: {}" -}}
+{{- end -}}
+{{- with $.Values.extraVolumes -}}
+{{- $chunks = append $chunks (toYaml . | trim) -}}
+{{- end -}}
+{{- if $chunks -}}
+{{ join "\n" $chunks }}
+{{- end -}}
+{{- end -}}
+
 {{- define "actions-runner.dindPrunePreStopScript" -}}
 # Bound prune runtime so runner drain still has termination budget.
 PRUNE_TIMEOUT={{ $.Values.dind.pruneTimeoutSeconds }}
