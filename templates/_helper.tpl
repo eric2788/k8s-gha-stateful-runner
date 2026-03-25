@@ -60,3 +60,11 @@
     "app.kubernetes.io/instance" $.Release.Name -}}
 {{- $labels | toYaml -}}
 {{- end -}}
+
+{{- define "actions-runner.workspaceMountSubPath" -}}
+{{- if and $.Values.workspace.enabled $.Values.workspace.subPathExpr -}}
+subPathExpr: {{ $.Values.workspace.subPathExpr | quote }}
+{{- else if and $.Values.workspace.enabled $.Values.workspace.subPath -}}
+subPath: {{ $.Values.workspace.subPath | quote }}
+{{- end -}}
+{{- end -}}

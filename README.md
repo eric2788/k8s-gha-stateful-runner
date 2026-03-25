@@ -79,6 +79,8 @@ helm install my-runners . \
 | `extraManifests` | Extra templated Kubernetes manifests to deploy with this chart | `[]`                               |
 | `dind.enable` | Enable Docker-in-Docker sidecar | `false`                            |
 | `dind.image` | DinD container image | `docker:27-dind`                   |
+| `dind.extraEnv` | Additional environment variables for the DinD container. | `[]`                               |
+| `dind.extraVolumeMounts` | Additional volume mounts to attach to the DinD container. | `[]`                               |
 | `dind.cachePersistence` | Persist the Docker layer cache (`/var/lib/docker`) across pod restarts via a per-pod PVC | `false`                            |
 | `dind.storageClass` | StorageClass for the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `""` (cluster default)             |
 | `dind.cacheSize` | Size of the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `"10Gi"`                           |
@@ -89,7 +91,7 @@ helm install my-runners . \
 | `workspace.size` | Size of workspace PVC | `"10Gi"`                           |
 | `workspace.accessModes` | Access modes for workspace PVC | `[ReadWriteOnce]`                  |
 | `workspace.subPath` | Optional sub-path within the workspace volume to mount | `""`                               |
-| `workspace.subPathExpr` | Optional sub-path expression for `existingClaim` mounts (supports env vars such as `$(POD_NAME)`). When empty and `workspace.subPath` is not set, defaults to `$(POD_NAME)`; when `workspace.subPath` is set and `subPathExpr` is empty, the effective path is `$(POD_NAME)/<workspace.subPath>`. | `""`                               |
+| `workspace.subPathExpr` | Optional sub-path expression used directly as `volumeMount.subPathExpr`. Any referenced env vars (for example `$(POD_NAME)`) must be provided by user-defined container env. | `""`                               |
 | `workspace.annotations` | Annotations for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
 | `workspace.labels` | Labels for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
 | `workspace.existingClaim` | Name of an existing PVC to mount instead of creating a per-pod VolumeClaimTemplate | `""`                               |
@@ -187,11 +189,12 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 ### Shared Existing PVC
 
-Mount a single pre-existing PVC across all runner pods. By default the chart isolates each pod's workspace using a sub-path expression:
+Mount a single pre-existing PVC across all runner pods.
 
-- When `workspace.subPath` is **not** set: each pod mounts under `$(POD_NAME)`.
-- When `workspace.subPath` **is** set: each pod mounts under `$(POD_NAME)/<subPath>`.
-- Set `workspace.subPathExpr` explicitly to override both defaults with a fully custom expression.
+- Set `workspace.subPath` to mount a fixed subdirectory.
+- Set `workspace.subPathExpr` to mount a dynamic expression.
+- `workspace.subPathExpr` takes precedence over `workspace.subPath` when both are set.
+- The chart does not inject env vars for `subPathExpr`; add any required env (such as `POD_NAME`) yourself.
 
 ```bash
 helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
@@ -217,6 +220,11 @@ runner:
     - name: maven-cache
       persistentVolumeClaim:
         claimName: maven-cache-pvc
+
+dind:
+  extraVolumeMounts:
+    - name: maven-cache
+      mountPath: /var/lib/docker-cache
 ```
 
 ## Re-registering a Runner

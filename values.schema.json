@@ -226,6 +226,44 @@
           "type": "string",
           "description": "DinD container image"
         },
+        "extraEnv": {
+          "type": "array",
+          "description": "Additional environment variables for the DinD container",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Environment variable name"
+              },
+              "value": {
+                "type": "string",
+                "description": "Literal environment variable value"
+              },
+              "valueFrom": {
+                "type": "object",
+                "description": "Environment variable source reference"
+              }
+            },
+            "oneOf": [
+              {
+                "required": ["value"]
+              },
+              {
+                "required": ["valueFrom"]
+              }
+            ]
+          }
+        },
+        "extraVolumeMounts": {
+          "type": "array",
+          "description": "Additional volume mounts to attach to the DinD container",
+          "items": {
+            "type": "object"
+          }
+        },
         "cachePersistence": {
           "type": "boolean",
           "description": "Enable persistent storage for the Docker layer cache (/var/lib/docker). When true, a PVC is created per pod via volumeClaimTemplates."
@@ -278,7 +316,7 @@
         },
         "subPathExpr": {
           "type": "string",
-          "description": "Optional sub-path expression for existingClaim volume mounts. Can reference environment variables available to the pod (e.g. $(POD_NAME)). When empty and existingClaim is set, defaults to $(POD_NAME)."
+          "description": "Optional sub-path expression for workspace volume mounts. Used directly as volumeMount.subPathExpr. Any referenced environment variables must be provided by user-defined env."
         },
         "annotations": {
           "type": "object",

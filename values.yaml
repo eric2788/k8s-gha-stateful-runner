@@ -134,6 +134,11 @@ extraManifests: []
 dind:
   enable: false
   image: "docker:27-dind"
+  # Additional environment variables for the DinD container.
+  extraEnv: []
+  # Additional volume mounts to attach to the DinD container.
+  # Mounts can reference built-in or runner.extraVolumes-defined pod volumes.
+  extraVolumeMounts: []
   # Enable persistent storage for the Docker layer cache (/var/lib/docker).
   # When false, an emptyDir is used and the cache is lost on pod restart.
   # When true, a PersistentVolumeClaim is created per pod via volumeClaimTemplates.
@@ -172,11 +177,9 @@ workspace:
     - ReadWriteOnce
   # Optional sub-path within the volume to mount.
   subPath: ""
-  # Optional sub-path expression for existingClaim volume mounts.
-  # When existingClaim is set, this expression is used as the subPathExpr and can reference
-  # environment variables available to the pod (for example, $(POD_NAME)).
-  # When empty, defaults to $(POD_NAME) (or $(POD_NAME)/<subPath> when subPath is also set)
-  # to provide per-pod workspace isolation.
+  # Optional sub-path expression for workspace volume mounts.
+  # When set, this is used directly as volumeMount.subPathExpr.
+  # Any variables referenced in the expression must be provided by user-defined env.
   subPathExpr: ""
   # Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates).
   annotations: {}
