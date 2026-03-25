@@ -1,6 +1,6 @@
 # gha-stateful-runner
 
-A Helm chart for deploying stateful GitHub Actions self-hosted runners on Kubernetes using a UI token — no Personal Access Token (PAT) required.
+A Helm chart for deploying stateful GitHub Actions self-hosted runners on Kubernetes using a UI token — no Personal Access Token (PAT) or Github App Installation required.
 
 Each runner pod keeps its registration credentials in a dedicated PersistentVolumeClaim, so runners survive restarts without re-registering on every startup.
 
