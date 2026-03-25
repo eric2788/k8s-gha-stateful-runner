@@ -50,6 +50,10 @@ affinity: {}
 # Annotations to add to runner pods (e.g. for Prometheus monitoring)
 podAnnotations: {}
 
+# Additional pod-level volumes for use with runner.extraVolumeMounts and dind.extraVolumeMounts.
+# This is shared across containers and is the preferred location.
+extraVolumes: []
+
 runner:
   name: "gha-sts-runner"
   count: 3
@@ -80,14 +84,6 @@ runner:
   #   - name: maven-cache
   #     mountPath: /home/runner/.m2
   extraVolumeMounts: []
-  # Additional volumes to add to the pod spec for use with extraVolumeMounts.
-  # Each entry follows the standard Kubernetes volume spec.
-  # Example:
-  # extraVolumes:
-  #   - name: maven-cache
-  #     persistentVolumeClaim:
-  #       claimName: maven-cache-pvc
-  extraVolumes: []
   # StorageClass for the credentials PVC. Defaults to the cluster default StorageClass.
   storageClass: ""
   # Storage size for the credentials PVC
@@ -134,6 +130,28 @@ extraManifests: []
 dind:
   enable: false
   image: "docker:27-dind"
+  # Additional environment variables for the DinD container.
+  extraEnv: []
+  # Additional volume mounts to attach to the DinD container.
+  # Mounts can reference built-in or top-level extraVolumes-defined pod volumes.
+  extraVolumeMounts: []
+  # Enable persistent storage for the Docker layer cache (/var/lib/docker).
+  # When false, an emptyDir is used and the cache is lost on pod restart.
+  # When true, a PersistentVolumeClaim is created per pod via volumeClaimTemplates.
+  cachePersistence: false
+  # StorageClass for the docker-storage PVC. Defaults to the cluster default StorageClass.
+  # Only used when cachePersistence is true.
+  storageClass: ""
+  # Size of the docker-storage PVC. Only used when cachePersistence is true.
+  cacheSize: "10Gi"
+  # Run `docker system prune -f` in a preStop lifecycle hook on the DinD container.
+  # When enabled, dangling images and build cache are automatically removed on pod
+  # termination/restart, helping limit PVC growth over time. Tagged images are preserved.
+  # Note: the cache can still grow between restarts for long-running pods. Recommended when cachePersistence is true.
+  pruneOnStop: false
+  # Max seconds allowed for preStop prune before it is terminated.
+  # Set to 0 to disable the timeout and wait until prune exits.
+  pruneTimeoutSeconds: 120
   resources:
     requests:
       cpu: "500m"
@@ -158,11 +176,9 @@ workspace:
     - ReadWriteOnce
   # Optional sub-path within the volume to mount.
   subPath: ""
-  # Optional sub-path expression for existingClaim volume mounts.
-  # When existingClaim is set, this expression is used as the subPathExpr and can reference
-  # environment variables available to the pod (for example, $(POD_NAME)).
-  # When empty, defaults to $(POD_NAME) (or $(POD_NAME)/<subPath> when subPath is also set)
-  # to provide per-pod workspace isolation.
+  # Optional sub-path expression for workspace volume mounts.
+  # When set, this is used directly as volumeMount.subPathExpr.
+  # Any variables referenced in the expression must be provided by user-defined env.
   subPathExpr: ""
   # Annotations to add to the workspace PVC metadata (only used with volumeClaimTemplates).
   annotations: {}

@@ -2,8 +2,8 @@ apiVersion: v2
 name: gha-stateful-runner
 description: A Helm chart for deploying GitHub Actions self-hosted runners using ui token without PAT.
 type: application
-version: 1.1.1
-appVersion: "1.1.1"
+version: 1.1.2
+appVersion: "1.1.2"
 icon: https://avatars.githubusercontent.com/u/9919
 home: https://github.com/eric2788/k8s-gha-stateful-runner
 sources:

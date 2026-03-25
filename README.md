@@ -59,7 +59,6 @@ helm install my-runners . \
 | `runner.labels` | Runner labels for job routing | `[self-hosted, linux, gha-static]` |
 | `runner.extraEnv` | Additional environment variables for the runner container. | `[]`                               |
 | `runner.extraVolumeMounts` | Additional volume mounts to attach to the runner container (e.g. for caching). | `[]`                               |
-| `runner.extraVolumes` | Additional volumes to add to the pod spec for use with `extraVolumeMounts`. | `[]`                               |
 | `runner.storageClass` | StorageClass for credentials PVC | `""` (cluster default)             |
 | `runner.credStorageSize` | Storage size for credentials PVC | `"64Mi"`                           |
 | `runner.resources` | Resource requests/limits for runner container | See `values.yaml`                  |
@@ -76,16 +75,24 @@ helm install my-runners . \
 | `podAntiAffinity.type` | `preferred` (soft) or `required` (hard) | `preferred`                        |
 | `affinity` | Additional affinity rules (e.g. nodeAffinity) | `{}`                               |
 | `podAnnotations` | Annotations for runner pods (e.g. Prometheus) | `{}`                               |
+| `extraVolumes` | Additional pod-level volumes shared by `runner.extraVolumeMounts` and `dind.extraVolumeMounts`. | `[]`                               |
 | `extraManifests` | Extra templated Kubernetes manifests to deploy with this chart | `[]`                               |
 | `dind.enable` | Enable Docker-in-Docker sidecar | `false`                            |
 | `dind.image` | DinD container image | `docker:27-dind`                   |
+| `dind.extraEnv` | Additional environment variables for the DinD container. | `[]`                               |
+| `dind.extraVolumeMounts` | Additional volume mounts to attach to the DinD container. | `[]`                               |
+| `dind.cachePersistence` | Persist the Docker layer cache (`/var/lib/docker`) across pod restarts via a per-pod PVC | `false`                            |
+| `dind.storageClass` | StorageClass for the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `""` (cluster default)             |
+| `dind.cacheSize` | Size of the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `"10Gi"`                           |
+| `dind.pruneOnStop` | Run `docker system prune -f` in a `preStop` hook to automatically remove dangling images and build cache before each pod restart. Recommended when `dind.cachePersistence` is `true`. | `false`                            |
+| `dind.pruneTimeoutSeconds` | Max seconds allowed for DinD preStop prune before it is terminated (`0` disables timeout). | `120`                              |
 | `dind.resources` | Resource requests/limits for DinD container | See `values.yaml`                  |
 | `workspace.enabled` | Enable persistent workspace PVC for `/home/runner/_work` | `false`                            |
 | `workspace.storageClass` | StorageClass for workspace PVC | `""` (cluster default)             |
 | `workspace.size` | Size of workspace PVC | `"10Gi"`                           |
 | `workspace.accessModes` | Access modes for workspace PVC | `[ReadWriteOnce]`                  |
 | `workspace.subPath` | Optional sub-path within the workspace volume to mount | `""`                               |
-| `workspace.subPathExpr` | Optional sub-path expression for `existingClaim` mounts (supports env vars such as `$(POD_NAME)`). When empty and `workspace.subPath` is not set, defaults to `$(POD_NAME)`; when `workspace.subPath` is set and `subPathExpr` is empty, the effective path is `$(POD_NAME)/<workspace.subPath>`. | `""`                               |
+| `workspace.subPathExpr` | Optional sub-path expression used directly as `volumeMount.subPathExpr`. Any referenced env vars (for example `$(POD_NAME)`) must be provided by user-defined container env. | `""`                               |
 | `workspace.annotations` | Annotations for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
 | `workspace.labels` | Labels for the workspace PVC (VolumeClaimTemplate only) | `{}`                               |
 | `workspace.existingClaim` | Name of an existing PVC to mount instead of creating a per-pod VolumeClaimTemplate | `""`                               |
@@ -117,6 +124,55 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 > [!WARNING]
 > DinD requires `privileged: true`. Ensure your cluster's PodSecurity policy or admission controller allows privileged containers.
 
+### Persistent Docker Layer Cache
+
+By default, the DinD sidecar stores Docker image layers in an `emptyDir` volume that is discarded whenever the pod restarts. This means every restart triggers a full re-pull of all images, which is wasteful in CI/CD environments with frequent restarts (rolling updates, node drain, pod eviction, etc.).
+
+Enable `dind.cachePersistence` to instead back `/var/lib/docker` with a per-pod PersistentVolumeClaim. The PVC survives pod restarts, so cached image layers are reused across runs:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set dind.enable=true \
+  --set dind.cachePersistence=true \
+  --set dind.cacheSize=20Gi
+```
+
+Specify a StorageClass if your cluster has multiple storage backends:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set dind.enable=true \
+  --set dind.cachePersistence=true \
+  --set dind.storageClass=fast-ssd \
+  --set dind.cacheSize=20Gi
+```
+
+> [!WARNING]
+> Docker does not automatically garbage-collect unused image layers. With `cachePersistence` enabled, `/var/lib/docker` will grow over time as new images are pulled or built and is only pruned when the pod is terminating (via `preStop`) if `dind.pruneOnStop` is enabled. If a pod runs for long periods without being restarted, `/var/lib/docker` can still grow significantly until the next termination/restart, so set `dind.cacheSize` generously (e.g. `50Gi`) based on your expected image footprint.
+
+Enable `dind.pruneOnStop` to have the chart inject a `preStop` lifecycle hook that automatically runs `docker system prune -f` whenever the pod is terminating (for example, during deletion or restart). This is not continuous garbage collection; cleanup only happens on pod termination events. Dangling images and accumulated build cache are removed, while tagged images are preserved for reuse. The hook is bounded by `dind.pruneTimeoutSeconds` so prune does not consume the entire shutdown window:
+
+```bash
+helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
+  --set runner.repoUrl=https://github.com/your-org/your-repo \
+  --set runner.token=YOUR_REGISTRATION_TOKEN \
+  --set dind.enable=true \
+  --set dind.cachePersistence=true \
+  --set dind.cacheSize=20Gi \
+  --set dind.pruneOnStop=true \
+  --set dind.pruneTimeoutSeconds=180
+```
+
+> [!NOTE]
+> When `cachePersistence` is disabled (the default), the DinD storage falls back to `emptyDir` and the behaviour is identical to previous chart versions.
+
+> [!NOTE]
+> `docker system prune` can take a noticeable amount of time when the cache is large. Even with `dind.pruneTimeoutSeconds`, DinD prune and runner drain still share the same pod `terminationGracePeriodSeconds` budget. Consider increasing `runner.terminationGracePeriodSeconds` when `dind.pruneOnStop` is enabled, especially if `runner.preStop.maxWaitSeconds + dind.pruneTimeoutSeconds` approaches your grace period.
+
 ## Persistent Workspace
 
 By default, the runner's work directory (`/home/runner/_work`) is an `emptyDir` volume and is discarded when a pod restarts. Enable `workspace` to persist it across restarts.
@@ -135,11 +191,12 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 ### Shared Existing PVC
 
-Mount a single pre-existing PVC across all runner pods. By default the chart isolates each pod's workspace using a sub-path expression:
+Mount a single pre-existing PVC across all runner pods.
 
-- When `workspace.subPath` is **not** set: each pod mounts under `$(POD_NAME)`.
-- When `workspace.subPath` **is** set: each pod mounts under `$(POD_NAME)/<subPath>`.
-- Set `workspace.subPathExpr` explicitly to override both defaults with a fully custom expression.
+- Set `workspace.subPath` to mount a fixed subdirectory.
+- Set `workspace.subPathExpr` to mount a dynamic expression.
+- `workspace.subPathExpr` takes precedence over `workspace.subPath` when both are set.
+- The chart does not inject env vars for `subPathExpr`; add any required env (such as `POD_NAME`) yourself.
 
 ```bash
 helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
@@ -154,17 +211,23 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 
 ## Extra Volume Mounts
 
-Attach additional volumes (e.g. a shared Maven cache PVC) to the runner container using `runner.extraVolumes` and `runner.extraVolumeMounts`:
+Attach additional volumes (e.g. a shared Maven cache PVC) using top-level `extraVolumes`, then mount them from runner and/or DinD:
 
 ```yaml
+extraVolumes:
+  - name: maven-cache
+    persistentVolumeClaim:
+      claimName: maven-cache-pvc
+
 runner:
   extraVolumeMounts:
     - name: maven-cache
       mountPath: /home/runner/.m2
-  extraVolumes:
+
+dind:
+  extraVolumeMounts:
     - name: maven-cache
-      persistentVolumeClaim:
-        claimName: maven-cache-pvc
+      mountPath: /var/lib/docker-cache
 ```
 
 ## Re-registering a Runner
