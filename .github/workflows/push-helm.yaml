@@ -1,6 +1,13 @@
 name: Release Helm Chart to GitHub Packages
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Chart.yaml'
+      - 'values.yaml'
+      - 'templates/**'
   workflow_dispatch:
     inputs:
       mode:
@@ -35,7 +42,13 @@ jobs:
 
           CHART_NAME=$(grep '^name:' Chart.yaml | awk '{print $2}')
           BASE_VERSION=$(grep '^version:' Chart.yaml | awk '{print $2}')
-          MODE='${{ github.event.inputs.mode }}'
+          
+          # For push events, always use nightly; for manual triggers, use the selected mode
+          if [ '${{ github.event_name }}' = 'push' ]; then
+            MODE='nightly'
+          else
+            MODE='${{ github.event.inputs.mode }}'
+          fi
 
           if [ -z "$CHART_NAME" ] || [ -z "$BASE_VERSION" ]; then
             echo "Chart.yaml must contain both name and version." >&2
