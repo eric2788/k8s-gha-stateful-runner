@@ -95,6 +95,9 @@ spec:
               value: {{ $.Values.runner.repoUrl | quote }}
             - name: RUNNER_LABELS
               value: {{ $.Values.runner.labels | join "," | trim | quote }}
+            {{- with $.Values.runner.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: runner-creds
               mountPath: /creds
