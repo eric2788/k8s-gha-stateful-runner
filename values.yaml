@@ -153,6 +153,9 @@ dind:
   # termination/restart, helping limit PVC growth over time. Tagged images are preserved.
   # Note: the cache can still grow between restarts for long-running pods. Recommended when cachePersistence is true.
   pruneOnStop: false
+  # Max seconds allowed for preStop prune before it is terminated.
+  # Set to 0 to disable the timeout and wait until prune exits.
+  pruneTimeoutSeconds: 120
   resources:
     requests:
       cpu: "500m"

@@ -221,7 +221,35 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: ["/bin/sh", "-c", "docker system prune -f || true"]
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    # Bound prune runtime so runner drain still has termination budget.
+                    PRUNE_TIMEOUT={{ $.Values.dind.pruneTimeoutSeconds }}
+                    if [ "$PRUNE_TIMEOUT" -eq 0 ]; then
+                      docker system prune -f || true
+                      exit 0
+                    fi
+
+                    docker system prune -f &
+                    PRUNE_PID=$!
+                    START_TS=$(date +%s)
+
+                    while kill -0 "$PRUNE_PID" 2>/dev/null; do
+                      NOW_TS=$(date +%s)
+                      ELAPSED=$((NOW_TS - START_TS))
+                      if [ "$ELAPSED" -ge "$PRUNE_TIMEOUT" ]; then
+                        echo "DinD preStop prune timed out after ${PRUNE_TIMEOUT}s; continuing termination."
+                        kill -TERM "$PRUNE_PID" 2>/dev/null || true
+                        sleep 2
+                        kill -KILL "$PRUNE_PID" 2>/dev/null || true
+                        break
+                      fi
+                      sleep 2
+                    done
+
+                    wait "$PRUNE_PID" 2>/dev/null || true
           {{- end }}
         {{- end }}
 

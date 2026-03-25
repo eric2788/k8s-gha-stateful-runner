@@ -85,6 +85,7 @@ helm install my-runners . \
 | `dind.storageClass` | StorageClass for the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `""` (cluster default)             |
 | `dind.cacheSize` | Size of the docker-storage PVC (only used when `dind.cachePersistence` is `true`) | `"10Gi"`                           |
 | `dind.pruneOnStop` | Run `docker system prune -f` in a `preStop` hook to automatically remove dangling images and build cache before each pod restart. Recommended when `dind.cachePersistence` is `true`. | `false`                            |
+| `dind.pruneTimeoutSeconds` | Max seconds allowed for DinD preStop prune before it is terminated (`0` disables timeout). | `120`                              |
 | `dind.resources` | Resource requests/limits for DinD container | See `values.yaml`                  |
 | `workspace.enabled` | Enable persistent workspace PVC for `/home/runner/_work` | `false`                            |
 | `workspace.storageClass` | StorageClass for workspace PVC | `""` (cluster default)             |
@@ -153,7 +154,7 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
 > [!WARNING]
 > Docker does not automatically garbage-collect unused image layers. With `cachePersistence` enabled, `/var/lib/docker` will grow over time as new images are pulled or built and is only pruned when the pod is terminating (via `preStop`) if `dind.pruneOnStop` is enabled. If a pod runs for long periods without being restarted, `/var/lib/docker` can still grow significantly until the next termination/restart, so set `dind.cacheSize` generously (e.g. `50Gi`) based on your expected image footprint.
 
-Enable `dind.pruneOnStop` to have the chart inject a `preStop` lifecycle hook that automatically runs `docker system prune -f` whenever the pod is terminating (for example, during deletion or restart). This is not continuous garbage collection; cleanup only happens on pod termination events. Dangling images and accumulated build cache are removed, while tagged images are preserved for reuse — no manual intervention needed:
+Enable `dind.pruneOnStop` to have the chart inject a `preStop` lifecycle hook that automatically runs `docker system prune -f` whenever the pod is terminating (for example, during deletion or restart). This is not continuous garbage collection; cleanup only happens on pod termination events. Dangling images and accumulated build cache are removed, while tagged images are preserved for reuse. The hook is bounded by `dind.pruneTimeoutSeconds` so prune does not consume the entire shutdown window:
 
 ```bash
 helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
@@ -162,14 +163,15 @@ helm install my-runners oci://ghcr.io/eric2788/charts/gha-stateful-runner \
   --set dind.enable=true \
   --set dind.cachePersistence=true \
   --set dind.cacheSize=20Gi \
-  --set dind.pruneOnStop=true
+  --set dind.pruneOnStop=true \
+  --set dind.pruneTimeoutSeconds=180
 ```
 
 > [!NOTE]
 > When `cachePersistence` is disabled (the default), the DinD storage falls back to `emptyDir` and the behaviour is identical to previous chart versions.
 
 > [!NOTE]
-> `docker system prune` can take a noticeable amount of time when the cache is large. Because the `preStop` hook runs within the pod's `terminationGracePeriodSeconds` budget (shared with the runner container's own drain time), consider increasing `runner.terminationGracePeriodSeconds` when `dind.pruneOnStop` is enabled to avoid in-flight jobs being cut off prematurely.
+> `docker system prune` can take a noticeable amount of time when the cache is large. Even with `dind.pruneTimeoutSeconds`, DinD prune and runner drain still share the same pod `terminationGracePeriodSeconds` budget. Consider increasing `runner.terminationGracePeriodSeconds` when `dind.pruneOnStop` is enabled, especially if `runner.preStop.maxWaitSeconds + dind.pruneTimeoutSeconds` approaches your grace period.
 
 ## Persistent Workspace
 
