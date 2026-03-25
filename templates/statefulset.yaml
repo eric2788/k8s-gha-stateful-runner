@@ -100,7 +100,7 @@ spec:
               mountPath: /creds
             - name: runner-work
               mountPath: /home/runner/_work
-              {{- include "actions-runner.workspaceMountSubPath" $ | nindent 14 }}
+              {{- include "actions-runner.workspaceMountSubPath" $ }}
           {{- with $.Values.runner.initResources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -176,7 +176,7 @@ spec:
               mountPath: /creds
             - name: runner-work
               mountPath: /home/runner/_work
-              {{- include "actions-runner.workspaceMountSubPath" $ | nindent 14 }}
+              {{- include "actions-runner.workspaceMountSubPath" $ }}
             {{- with $.Values.runner.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -209,7 +209,7 @@ spec:
               mountPath: /var/lib/docker
             - name: runner-work
               mountPath: /home/runner/_work
-              {{- include "actions-runner.workspaceMountSubPath" $ | nindent 14 }}
+              {{- include "actions-runner.workspaceMountSubPath" $ }}
             {{- with $.Values.dind.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -225,43 +225,13 @@ spec:
                   - /bin/sh
                   - -c
                   - |
-                    # Bound prune runtime so runner drain still has termination budget.
-                    PRUNE_TIMEOUT={{ $.Values.dind.pruneTimeoutSeconds }}
-                    if [ "$PRUNE_TIMEOUT" -eq 0 ]; then
-                      docker system prune -f || true
-                      exit 0
-                    fi
-
-                    docker system prune -f &
-                    PRUNE_PID=$!
-                    START_TS=$(date +%s)
-
-                    while kill -0 "$PRUNE_PID" 2>/dev/null; do
-                      NOW_TS=$(date +%s)
-                      ELAPSED=$((NOW_TS - START_TS))
-                      if [ "$ELAPSED" -ge "$PRUNE_TIMEOUT" ]; then
-                        echo "DinD preStop prune timed out after ${PRUNE_TIMEOUT}s; continuing termination."
-                        kill -TERM "$PRUNE_PID" 2>/dev/null || true
-                        sleep 2
-                        kill -KILL "$PRUNE_PID" 2>/dev/null || true
-                        break
-                      fi
-                      sleep 2
-                    done
-
-                    wait "$PRUNE_PID" 2>/dev/null || true
+                    {{- include "actions-runner.dindPrunePreStopScript" $ | nindent 20 }}
           {{- end }}
         {{- end }}
 
+      {{- if or (not $.Values.workspace.enabled) $.Values.workspace.existingClaim (and $.Values.dind.enable (not $.Values.dind.cachePersistence)) $.Values.runner.extraVolumes }}
       volumes:
-        {{- if not $.Values.workspace.enabled }}
-        - name: runner-work
-          emptyDir: {}
-        {{- else if $.Values.workspace.existingClaim }}
-        - name: runner-work
-          persistentVolumeClaim:
-            claimName: {{ $.Values.workspace.existingClaim }}
-        {{- end }}
+        {{- include "actions-runner.workspaceVolumeSource" $ | nindent 8 }}
         {{- if and $.Values.dind.enable (not $.Values.dind.cachePersistence) }}
         - name: docker-storage
           emptyDir: {}
@@ -269,6 +239,7 @@ spec:
         {{- with $.Values.runner.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      {{- end }}
 
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Delete

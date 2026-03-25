@@ -63,8 +63,47 @@
 
 {{- define "actions-runner.workspaceMountSubPath" -}}
 {{- if and $.Values.workspace.enabled $.Values.workspace.subPathExpr -}}
-subPathExpr: {{ $.Values.workspace.subPathExpr | quote }}
+{{- printf "subPathExpr: %s" ($.Values.workspace.subPathExpr | quote) | nindent 14 -}}
 {{- else if and $.Values.workspace.enabled $.Values.workspace.subPath -}}
-subPath: {{ $.Values.workspace.subPath | quote }}
+{{- printf "subPath: %s" ($.Values.workspace.subPath | quote) | nindent 14 -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "actions-runner.workspaceVolumeSource" -}}
+{{- if not $.Values.workspace.enabled }}
+- name: runner-work
+  emptyDir: {}
+{{- else if $.Values.workspace.existingClaim }}
+- name: runner-work
+  persistentVolumeClaim:
+    claimName: {{ $.Values.workspace.existingClaim }}
+{{- end }}
+{{- end -}}
+
+{{- define "actions-runner.dindPrunePreStopScript" -}}
+# Bound prune runtime so runner drain still has termination budget.
+PRUNE_TIMEOUT={{ $.Values.dind.pruneTimeoutSeconds }}
+if [ "$PRUNE_TIMEOUT" -eq 0 ]; then
+  docker system prune -f || true
+  exit 0
+fi
+
+docker system prune -f &
+PRUNE_PID=$!
+START_TS=$(date +%s)
+
+while kill -0 "$PRUNE_PID" 2>/dev/null; do
+  NOW_TS=$(date +%s)
+  ELAPSED=$((NOW_TS - START_TS))
+  if [ "$ELAPSED" -ge "$PRUNE_TIMEOUT" ]; then
+    echo "DinD preStop prune timed out after ${PRUNE_TIMEOUT}s; continuing termination."
+    kill -TERM "$PRUNE_PID" 2>/dev/null || true
+    sleep 2
+    kill -KILL "$PRUNE_PID" 2>/dev/null || true
+    break
+  fi
+  sleep 2
+done
+
+wait "$PRUNE_PID" 2>/dev/null || true
 {{- end -}}
